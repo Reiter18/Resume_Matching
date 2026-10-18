@@ -1,0 +1,12 @@
+{"data": [
+ {"slug": "python-dev-berlin-123", "company_name": "  Acme   GmbH ", "title": "Junior Python Developer (m/f/d)",
+  "description": "<p>We use <b>FastAPI</b> and PostgreSQL.</p><ul><li>Docker</li></ul>", "remote": true,
+  "url": "https://arbeitnow.com/jobs/acme/python-dev-berlin-123", "tags": ["Software Development", "software development", "Python"],
+  "job_types": ["Full Time"], "location": "Berlin", "created_at": 1759650000},
+ {"slug": "broken-no-title", "company_name": "X", "description": "", "url": "https://x", "created_at": 1759650000},
+ {"slug": "ml-eng-munich-456", "company_name": "Beta AG", "title": "ML Engineer", "description": "<div>PyTorch</div>",
+  "remote": false, "url": "https://arbeitnow.com/jobs/beta/ml-eng-munich-456", "tags": ["Data Science"],
+  "job_types": [], "location": "Munich", "created_at": 1759660000}
+ ],
+ "links": {"first": "https://arbeitnow.com/api/job-board-api?page=1", "next": "https://arbeitnow.com/api/job-board-api?page=2"},
+ "meta": {"current_page": 1}}
