@@ -5,8 +5,15 @@ import pytest
 from app.sharing import build_public_payload, hash_token, is_active, new_token, validate_fields
 
 MATCHES = [
-    {"title": "Dev", "company": "Acme", "url": "https://x/1", "score": 0.9, "breakdown": {"skills": 0.9},
-     "resume_text": "СЕКРЕТ", "email": "a@b.c"},
+    {
+        "title": "Dev",
+        "company": "Acme",
+        "url": "https://x/1",
+        "score": 0.9,
+        "breakdown": {"skills": 0.9},
+        "resume_text": "СЕКРЕТ",
+        "email": "a@b.c",
+    },
     {"title": "Low", "company": "B", "url": "https://x/2", "score": 0.4, "breakdown": {}},
 ]
 

@@ -2,8 +2,18 @@ from datetime import datetime
 from typing import Optional
 
 from sqlalchemy import (
-    ARRAY, BigInteger, Boolean, DateTime, Float, ForeignKey, Index, Integer,
-    String, Text, UniqueConstraint, func,
+    ARRAY,
+    BigInteger,
+    Boolean,
+    DateTime,
+    Float,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+    func,
 )
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
@@ -22,6 +32,7 @@ class Source(Base):
     enabled: Mapped[bool] = mapped_column(Boolean, default=True)
     consecutive_failures: Mapped[int] = mapped_column(Integer, default=0)
     last_success_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
+    last_failure_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
     last_error: Mapped[Optional[str]] = mapped_column(Text)
 
 
@@ -63,12 +74,14 @@ class Vacancy(Base):
     schedule: Mapped[Optional[str]] = mapped_column(String(20))  
     hours_per_week: Mapped[Optional[int]] = mapped_column(Integer)
     experience_years_min: Mapped[Optional[float]] = mapped_column(Float)
-    salary_min: Mapped[Optional[int]] = mapped_column(Integer)  
+    salary_min: Mapped[Optional[int]] = mapped_column(Integer) 
     salary_max: Mapped[Optional[int]] = mapped_column(Integer)
     salary_currency: Mapped[Optional[str]] = mapped_column(String(3))
     description_text: Mapped[str] = mapped_column(Text)
     tags: Mapped[list[str]] = mapped_column(ARRAY(String), default=list)  
-    skills: Mapped[list[str]] = mapped_column(ARRAY(String), default=list)  
+    skills: Mapped[list[str]] = mapped_column(
+        ARRAY(String), default=list
+    )  
     published_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
 
     content_hash: Mapped[str] = mapped_column(String(64))
@@ -144,6 +157,18 @@ class ShareLink(Base):
     view_count: Mapped[int] = mapped_column(Integer, default=0)
     last_viewed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class DeadLetter(Base):
+    __tablename__ = "dead_letters"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    task_name: Mapped[str] = mapped_column(String(200))
+    task_id: Mapped[Optional[str]] = mapped_column(String(100))
+    args: Mapped[Optional[dict]] = mapped_column(JSONB)
+    error: Mapped[str] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    resolved_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
 
 
 class NotificationSettings(Base):
