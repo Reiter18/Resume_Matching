@@ -9,3 +9,6 @@ httpx
 tenacity
 beautifulsoup4
 pytest
+celery[redis]
+redis
+ruff

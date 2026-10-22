@@ -2,16 +2,47 @@
 
 ## Запуск
 
+Всё сразу (Postgres, Redis, API, воркер, планировщик, фронтенд):
+
 ```bash
 cp .env.example .env
-docker compose up -d postgres redis
-cd backend && pip install -r requirements.txt
-python -m pytest -q
-python -m app.cli arbeitnow 1
+docker compose up --build
 ```
 
-Создать таблицы: `alembic init migrations`, в `migrations/env.py` указать `target_metadata = Base.metadata`
-и `sqlalchemy.url` из `settings.database_url`, затем `alembic revision --autogenerate -m "init"` и `alembic upgrade head`.
+- API: http://localhost:8000 (`/health`, `/sources`, документация `/docs`), фронтенд: http://localhost:5173
+- Миграции применяются при старте `api` (`alembic upgrade head`). Новая миграция после изменения моделей: `cd backend && alembic revision --autogenerate -m "описание"`.
+
+Локально без Docker для разработки:
+
+```bash
+docker compose up -d postgres redis
+cd backend && pip install -r requirements.txt
+alembic upgrade head
+uvicorn app.main:app --reload
+celery -A app.celery_app worker -Q ingest,default -l info
+celery -A app.celery_app beat -l info
+python -m app.cli arbeitnow 1
+cd ../frontend && npm install && npm run dev
+```
+
+## Очереди и фоновые задачи (Celery + Redis)
+
+- **Периодический сбор:** `beat` раз в `INGEST_INTERVAL_SECONDS` (по умолчанию 30 мин) ставит задачу `ingest_source` на каждый источник из `REGISTRY`. Новый источник подхватывается автоматически.
+- **Отдельные очереди:** `ingest` для сбора; матчинг получит свою, чтобы не мешать сбору.
+- **Надёжность:** `acks_late` + `reject_on_worker_lost` — если воркер упал посреди задачи, она вернётся в очередь, а не потеряется.
+- **Ретраи:** временные ошибки БД повторяются с нарастающей паузой (до 3 раз).
+- **Мёртвая очередь:** задача, упавшая окончательно, сохраняется в таблицу `dead_letters` (имя, аргументы, ошибка) и не теряется.
+- **Предохранитель источника:** после 5 сбоев подряд источник не опрашивается час (`BREAKER_*` в конфиге), чтобы не долбить упавший сайт. Остальные источники работают как обычно.
+- **Наблюдаемость:** `GET /sources` показывает состояние каждого источника, `GET /health` — доступность БД и Redis.
+
+## Тесты и CI
+
+```bash
+cd backend && ruff check . && pytest -q
+cd frontend && npm run lint && npm test && npm run build
+```
+
+GitHub Actions (`.github/workflows/ci.yml`) запускает то же самое при каждом push и Pull Request: бэкенд с Postgres и Redis, фронтенд отдельным заданием.
 
 ## Схема данных
 

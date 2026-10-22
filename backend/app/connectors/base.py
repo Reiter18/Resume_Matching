@@ -5,7 +5,7 @@ from app.schemas import NormalizedVacancy
 
 
 class SourceUnavailable(Exception):
-    """Сделать"""
+    """Источник недоступен/сломался. Ловится ингестором: падение одного источника не валит остальные."""
 
 
 class BaseConnector(ABC):
@@ -14,4 +14,4 @@ class BaseConnector(ABC):
 
     @abstractmethod
     def fetch(self, max_pages: int = 1) -> Iterator[NormalizedVacancy]:
-        """Сделать"""
+        """Отдаёт вакансии в нормализованном виде. При недоступности источника - SourceUnavailable."""

@@ -20,8 +20,30 @@ services:
     env_file: .env
     depends_on:
       postgres: {condition: service_healthy}
+      redis: {condition: service_started}
     ports: ["8000:8000"]
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    command: sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
     volumes: ["./backend:/app"]
+  worker:
+    build: ./backend
+    env_file: .env
+    depends_on:
+      postgres: {condition: service_healthy}
+      redis: {condition: service_started}
+    command: celery -A app.celery_app worker -Q ingest,default -l info
+    volumes: ["./backend:/app"]
+  beat:
+    build: ./backend
+    env_file: .env
+    depends_on:
+      redis: {condition: service_started}
+    command: celery -A app.celery_app beat -l info
+    volumes: ["./backend:/app"]
+  frontend:
+    build: ./frontend
+    ports: ["5173:5173"]
+    environment:
+      VITE_API_PROXY: http://api:8000
+    volumes: ["./frontend:/app", "/app/node_modules"]
 volumes:
   pgdata:
