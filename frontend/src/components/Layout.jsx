@@ -1,6 +1,7 @@
 import { NavLink, Outlet } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { api } from '../api/client.js'
+import { useAuth } from '../auth/AuthContext.jsx'
 
 const links = [
   ['/', 'Лента'],
@@ -21,6 +22,7 @@ function Health() {
 }
 
 export default function Layout() {
+  const { user, logout } = useAuth()
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800">
       <header className="flex h-14 items-center justify-between border-b border-slate-200 bg-white px-6">
@@ -32,7 +34,13 @@ export default function Layout() {
             </NavLink>
           ))}
         </nav>
-        <Health />
+        <div className="flex items-center gap-4">
+          <Health />
+          <span className="text-xs text-slate-500">{user?.full_name || user?.email}</span>
+          <button type="button" onClick={logout} className="rounded border border-slate-300 px-2 py-1 text-xs">
+            Выйти
+          </button>
+        </div>
       </header>
       <main className="mx-auto max-w-5xl p-6">
         <Outlet />
