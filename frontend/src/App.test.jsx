@@ -1,34 +1,46 @@
-import { render, screen } from '@testing-library/react'
-import { MemoryRouter } from 'react-router-dom'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import App from './App.jsx'
+import { screen } from '@testing-library/react'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { HEALTH, USER, mockApi, renderApp } from './test/utils.jsx'
+import { setToken } from './auth/token.js'
 
-function renderAt(path) {
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-  return render(
-    <QueryClientProvider client={client}>
-      <MemoryRouter initialEntries={[path]}>
-        <App />
-      </MemoryRouter>
-    </QueryClientProvider>,
-  )
-}
+beforeEach(() => localStorage.clear())
+afterEach(() => vi.unstubAllGlobals())
 
-describe('роутинг', () => {
-  it('показывает ленту и навигацию на главной', () => {
-    renderAt('/')
-    expect(screen.getByRole('heading', { name: 'Лента вакансий' })).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Профиль и резюме' })).toBeInTheDocument()
+describe('роутинг и защита страниц', () => {
+  it('гостя с главной отправляет на страницу входа', async () => {
+    mockApi()
+    renderApp('/')
+    expect(await screen.findByRole('button', { name: 'Войти' })).toBeInTheDocument()
+    expect(screen.queryByRole('navigation')).not.toBeInTheDocument()
   })
 
-  it('открывает публичную подборку без шапки приложения', () => {
-    renderAt('/s/abc123')
+  it('вошедший видит ленту, навигацию и свой email', async () => {
+    mockApi({ 'GET /me': { status: 200, body: USER }, 'GET /health': { status: 200, body: HEALTH } })
+    setToken('valid-token')
+    renderApp('/')
+    expect(await screen.findByRole('heading', { name: 'Лента вакансий' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Профиль и резюме' })).toBeInTheDocument()
+    expect(screen.getByText(USER.email)).toBeInTheDocument()
+  })
+
+  it('публичная подборка открывается без входа и без шапки приложения', () => {
+    mockApi()
+    renderApp('/s/abc123')
     expect(screen.getByRole('heading', { name: 'Публичная подборка' })).toBeInTheDocument()
     expect(screen.queryByRole('navigation')).not.toBeInTheDocument()
   })
 
-  it('неизвестный адрес ведёт на главную', () => {
-    renderAt('/нет-такой-страницы')
-    expect(screen.getByRole('heading', { name: 'Лента вакансий' })).toBeInTheDocument()
+  it('неизвестный адрес ведёт на главную, а гостя дальше на вход', async () => {
+    mockApi()
+    renderApp('/нет-такой-страницы')
+    expect(await screen.findByRole('button', { name: 'Войти' })).toBeInTheDocument()
+  })
+
+  it('просроченный токен (401 на /me) выбрасывает на вход', async () => {
+    mockApi({ 'GET /me': { status: 401, body: { detail: 'Требуется вход' } } })
+    setToken('expired-token')
+    renderApp('/profile')
+    expect(await screen.findByRole('button', { name: 'Войти' })).toBeInTheDocument()
+    expect(localStorage.getItem('jobmatch_token')).toBeNull()
   })
 })
