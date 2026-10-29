@@ -50,7 +50,8 @@ def test_list_is_paginated_sorted_and_hides_duplicates(client, vacancies):
 
 def test_filters(client, vacancies):
     h = login_headers(client)
-    titles = lambda qs: [i["title"] for i in client.get(f"/vacancies?{qs}", headers=h).json()["items"]]  
+    def titles(qs):
+        return [i["title"] for i in client.get(f"/vacancies?{qs}", headers=h).json()["items"]] 
     assert titles("q=java") == ["Java Developer"]
     assert titles("q=acme") == ["Python Developer"]
     assert titles("work_format=remote") == ["Python Developer"]

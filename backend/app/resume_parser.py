@@ -75,7 +75,8 @@ def _page_lines(page) -> list[str]:
 
 
 def _reading_order(lines: list, width: float) -> list:
-    key = lambda ln: (round(ln[1] / 4), ln[0])  
+    def key(ln):  
+        return (round(ln[1] / 4), ln[0])
     spans = [ln for ln in lines if ln[2] - ln[0] > 0.6 * width]
     cols = [ln for ln in lines if ln not in spans]
     gutter = _find_gutter(cols, width)
