@@ -16,7 +16,7 @@ export function setToken(token) {
   try {
     localStorage.setItem(KEY, token)
   } catch {
-    
+    // Игнорирование ошибки
   }
   notify()
 }
@@ -25,7 +25,7 @@ export function clearToken() {
   try {
     localStorage.removeItem(KEY)
   } catch {
-    
+    // Игнорирование ошибки
   }
   notify()
 }

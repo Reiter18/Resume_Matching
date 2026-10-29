@@ -28,7 +28,7 @@ export async function api(path, options = {}) {
     try {
       body = await res.json()
     } catch {
-
+      // Игнорирование ошибки
     }
     if (res.status === 401 && token && !path.startsWith('/auth/')) clearToken()
     throw new ApiError(res.status, errorMessage(res.status, body))
