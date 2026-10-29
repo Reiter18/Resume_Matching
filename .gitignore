@@ -5,3 +5,5 @@ __pycache__/
 pgdata/
 node_modules/
 celerybeat-schedule*
+dist/
+.ruff_cache/
