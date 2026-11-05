@@ -14,6 +14,7 @@ from sqlalchemy import (
     Text,
     UniqueConstraint,
     func,
+    text,
 )
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
@@ -42,6 +43,7 @@ class Skill(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(100), unique=True)
     weight: Mapped[float] = mapped_column(Float, default=1.0)
+    category: Mapped[Optional[str]] = mapped_column(String(30))
 
 
 class SkillAlias(Base):
@@ -57,6 +59,8 @@ class Vacancy(Base):
         UniqueConstraint("source_id", "external_id", name="uq_vacancy_source_external"),
         Index("ix_vacancies_published_at", "published_at"),
         Index("ix_vacancies_dedup_key", "dedup_key"),
+        Index("ix_vacancies_company_key", "company_key"),
+        Index("ix_vacancies_dedup_pending", "id", postgresql_where=text("dedup_checked_at IS NULL")),
         Index("ix_vacancies_content_hash", "content_hash"),
         Index("ix_vacancies_skills", "skills", postgresql_using="gin"),
     )
@@ -84,6 +88,8 @@ class Vacancy(Base):
 
     content_hash: Mapped[str] = mapped_column(String(64))
     dedup_key: Mapped[str] = mapped_column(String(255))
+    company_key: Mapped[str] = mapped_column(String(255))
+    dedup_checked_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
     canonical_id: Mapped[Optional[int]] = mapped_column(ForeignKey("vacancies.id"))
     fetched_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
@@ -109,7 +115,7 @@ class Resume(Base):
     raw_text: Mapped[str] = mapped_column(Text)
     skills: Mapped[list[str]] = mapped_column(ARRAY(String), default=list)
     experience_years: Mapped[Optional[float]] = mapped_column(Float)
-    language: Mapped[Optional[str]] = mapped_column(String(10))  
+    language: Mapped[Optional[str]] = mapped_column(String(10))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 

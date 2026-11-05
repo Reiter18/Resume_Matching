@@ -5,6 +5,7 @@ from sqlalchemy.exc import OperationalError
 
 from app.celery_app import celery_app
 from app.db import SessionLocal
+from app.dedup import dedup_all
 from app.ingestion import run_source
 from app.models import DeadLetter
 
@@ -38,4 +39,21 @@ class DeadLetterTask(Task):
 )
 def ingest_source(self, name: str, max_pages: int = 1) -> int:
     with SessionLocal() as session:
-        return run_source(session, name, max_pages)
+        saved = run_source(session, name, max_pages)
+    if saved:
+        dedup_vacancies.delay()  
+    return saved
+
+
+@celery_app.task(
+    bind=True,
+    base=DeadLetterTask,
+    name="app.tasks.dedup_vacancies",
+    autoretry_for=(OperationalError,),
+    retry_backoff=True,
+    max_retries=3,
+)
+def dedup_vacancies(self) -> dict:
+    with SessionLocal() as session:
+        stats = dedup_all(session)
+    return {"checked": stats.checked, "duplicates": stats.duplicates}

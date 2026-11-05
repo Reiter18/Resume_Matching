@@ -2,7 +2,7 @@ import logging
 from datetime import datetime, timezone
 from typing import Optional
 
-from sqlalchemy import select
+from sqlalchemy import case, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
@@ -55,14 +55,19 @@ def run_source(session: Session, name: str, max_pages: int = 1) -> int:
                 published_at=v.published_at,
                 content_hash=v.content_hash,
                 dedup_key=v.dedup_key,
+                company_key=v.company_key,
             )
+            changed = Vacancy.content_hash != stmt.excluded.content_hash
             stmt = stmt.on_conflict_do_update(
                 constraint="uq_vacancy_source_external",
                 set_={
                     "title": stmt.excluded.title,
                     "description_text": stmt.excluded.description_text,
                     "content_hash": stmt.excluded.content_hash,
+                    "company_key": stmt.excluded.company_key,
                     "fetched_at": datetime.now(timezone.utc),
+                    "dedup_checked_at": case((changed, None), else_=Vacancy.dedup_checked_at),
+                    "canonical_id": case((changed, None), else_=Vacancy.canonical_id),
                 },
             )
             session.execute(stmt)

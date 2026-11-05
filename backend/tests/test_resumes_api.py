@@ -39,39 +39,31 @@ def test_upload_get_delete(client):
     assert client.get("/resumes/me", headers=h).status_code == 404
 
 
-def test_new_upload_replaces_old_one(client):
-    h = login_headers(client)
-    upload(client, h, pdf_bytes(CV))
-    second = upload(client, h, (CV + " Kubernetes extra line").encode(), "cv.txt").json()
-    assert client.get("/resumes/me", headers=h).json()["id"] == second["id"]
-
-
-def test_users_cannot_see_each_others_resumes(client):
+def test_resumes_are_private_and_need_login(client):
     a = login_headers(client, "a@example.com")
     b = login_headers(client, "b@example.com")
     upload(client, a, pdf_bytes(CV))
     assert client.get("/resumes/me", headers=b).status_code == 404  
+    assert client.get("/resumes/me/text", headers=a).status_code == 200
+    assert client.get("/resumes/me/text", headers=b).status_code == 404
     assert client.delete("/resumes/me", headers=b).status_code == 204
     assert client.get("/resumes/me", headers=a).status_code == 200  
+    assert upload(client, {}, pdf_bytes(CV)).status_code == 401
 
 
-def test_bad_files_get_clear_errors(client):
+def test_bad_files_and_bad_text_get_clear_errors(client, monkeypatch):
+    from app.config import settings
+
     h = login_headers(client)
     assert upload(client, h, b"", "cv.txt").status_code == 422
     assert upload(client, h, b"PK\x03\x04docx", "cv.docx").status_code == 422
     assert upload(client, h, b"%PDF-1.4 broken", "cv.pdf").status_code == 422
-
-
-def test_too_large_file_rejected(client, monkeypatch):
-    from app.config import settings
-
     monkeypatch.setattr(settings, "max_resume_bytes", 100)
-    h = login_headers(client)
     assert upload(client, h, b"x" * 101, "cv.txt").status_code == 413
-
-
-def test_upload_requires_login(client):
-    assert upload(client, {}, pdf_bytes(CV)).status_code == 401
+    assert client.post("/resumes/text", json={"text": "short"}, headers=h).status_code == 422
+    assert client.post("/resumes/text", json={"text": ""}, headers=h).status_code == 422
+    assert client.post("/resumes/text", json={"text": CV}).status_code == 401
+    assert client.get("/resumes/me/text", headers=h).status_code == 404
 
 
 def docx_bytes(text: str) -> bytes:
@@ -82,7 +74,7 @@ def docx_bytes(text: str) -> bytes:
     return buf.getvalue()
 
 
-def test_docx_upload_and_language_detection(client):
+def test_docx_language_and_replacement(client):
     h = login_headers(client)
     body = upload(
         client,
@@ -95,6 +87,7 @@ def test_docx_upload_and_language_detection(client):
     assert body["language"] == "ru" and "FastAPI" in body["preview"]
     english = upload(client, h, pdf_bytes(CV)).json()
     assert english["language"] == "en"
+    assert client.get("/resumes/me", headers=h).json()["id"] == english["id"]  
 
 
 def test_paste_text_and_read_full_text(client):
@@ -105,19 +98,3 @@ def test_paste_text_and_read_full_text(client):
     assert len(r.json()["preview"]) == 500 < r.json()["char_count"]
     full = client.get("/resumes/me/text", headers=h).json()["text"]
     assert full.startswith("Backend developer.") and len(full) == r.json()["char_count"]
-
-
-def test_paste_text_validation(client):
-    h = login_headers(client)
-    assert client.post("/resumes/text", json={"text": "short"}, headers=h).status_code == 422
-    assert client.post("/resumes/text", json={"text": ""}, headers=h).status_code == 422
-    assert client.post("/resumes/text", json={"text": CV}).status_code == 401
-    assert client.get("/resumes/me/text", headers=h).status_code == 404
-
-
-def test_full_text_is_private(client):
-    a = login_headers(client, "a@example.com")
-    b = login_headers(client, "b@example.com")
-    upload(client, a, pdf_bytes(CV))
-    assert client.get("/resumes/me/text", headers=a).status_code == 200
-    assert client.get("/resumes/me/text", headers=b).status_code == 404

@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session, joinedload
 
 from app.deps import get_current_user, get_db
 from app.models import User, Vacancy
-from app.schemas.api import VacancyDetailOut, VacancyOut, VacancyPage
+from app.schemas.api import DuplicateOut, VacancyDetailOut, VacancyOut, VacancyPage
 from app.schemas.vacancy import WorkFormat
 
 router = APIRouter(prefix="/vacancies", tags=["vacancies"])
@@ -14,11 +14,23 @@ router = APIRouter(prefix="/vacancies", tags=["vacancies"])
 
 def _out(v: Vacancy) -> dict:
     return dict(
-        id=v.id, title=v.title, company=v.company, location=v.location, work_format=v.work_format,
-        employment_types=v.employment_types or [], schedule=v.schedule, hours_per_week=v.hours_per_week,
-        salary_min=v.salary_min, salary_max=v.salary_max, salary_currency=v.salary_currency,
-        tags=v.tags or [], skills=v.skills or [], published_at=v.published_at, url=v.url, source=v.source.name,
-    )  
+        id=v.id,
+        title=v.title,
+        company=v.company,
+        location=v.location,
+        work_format=v.work_format,
+        employment_types=v.employment_types or [],
+        schedule=v.schedule,
+        hours_per_week=v.hours_per_week,
+        salary_min=v.salary_min,
+        salary_max=v.salary_max,
+        salary_currency=v.salary_currency,
+        tags=v.tags or [],
+        skills=v.skills or [],
+        published_at=v.published_at,
+        url=v.url,
+        source=v.source.name,
+    )
 
 
 @router.get("", response_model=VacancyPage)
@@ -32,8 +44,7 @@ def list_vacancies(
     db: Session = Depends(get_db),
     _: User = Depends(get_current_user),
 ):
-    """Простой список с фильтрами и пагинацией. Ранжирование по резюме добавится вместе со скорингом."""
-    conds = [Vacancy.canonical_id.is_(None)]  
+    conds = [Vacancy.canonical_id.is_(None)]
     if q:
         like = "%" + q.strip().replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%"
         conds.append(or_(Vacancy.title.ilike(like, escape="\\"), Vacancy.company.ilike(like, escape="\\")))
@@ -61,4 +72,16 @@ def get_vacancy(vacancy_id: int, db: Session = Depends(get_db), _: User = Depend
     v = db.scalar(select(Vacancy).where(Vacancy.id == vacancy_id).options(joinedload(Vacancy.source)))
     if v is None:
         raise HTTPException(404, "Вакансия не найдена")
-    return VacancyDetailOut(**_out(v), description_text=v.description_text)
+    root_id = v.canonical_id or v.id
+    others = db.scalars(
+        select(Vacancy)
+        .where(or_(Vacancy.canonical_id == root_id, Vacancy.id == root_id), Vacancy.id != v.id)
+        .options(joinedload(Vacancy.source))
+        .order_by(Vacancy.published_at, Vacancy.id)
+    ).all()
+    return VacancyDetailOut(
+        **_out(v),
+        description_text=v.description_text,
+        canonical_id=v.canonical_id,
+        also_found_at=[DuplicateOut(source=o.source.name, url=o.url) for o in others],
+    )

@@ -3,6 +3,7 @@ argon2-cffi
 beautifulsoup4
 celery[redis]
 email-validator
+fakeredis
 fastapi
 httpx
 psycopg[binary]
@@ -18,3 +19,4 @@ ruff
 sqlalchemy>=2.0
 tenacity
 uvicorn[standard]
+rapidfuzz
