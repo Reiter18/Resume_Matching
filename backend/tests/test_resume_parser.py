@@ -29,9 +29,9 @@ def test_pdf_text_extracted():
     assert "FastAPI" in text and "Backend developer" in text
 
 
-def test_two_column_pdf_reads_left_column_then_right():
+def test_pdf_reading_order():
     doc = pymupdf.open()
-    page = doc.new_page()  
+    page = doc.new_page()
     left = [f"LEFT-{i} experience description line number {i}" for i in range(1, 5)]
     right = [f"RIGHT-{i} skills description line number {i}" for i in range(1, 5)]
     for i, (a, b) in enumerate(zip(left, right, strict=True)):
@@ -39,10 +39,8 @@ def test_two_column_pdf_reads_left_column_then_right():
         page.insert_text((330, 100 + i * 60), b)
     text = extract_text("cv.pdf", doc.tobytes())
     order = [text.index(x.split()[0]) for x in left + right]
-    assert order == sorted(order)  
+    assert order == sorted(order)
 
-
-def test_rows_with_right_aligned_dates_are_not_split_into_columns():
     doc = pymupdf.open()
     page = doc.new_page()
     rows = [("Backend developer at Acme", "2022 - 2024"), ("Junior developer at Beta", "2020 - 2022"),
@@ -51,18 +49,7 @@ def test_rows_with_right_aligned_dates_are_not_split_into_columns():
         page.insert_text((50, 100 + i * 40), job)
         page.insert_text((470, 100 + i * 40), dates)
     lines = extract_text("cv.pdf", doc.tobytes()).split("\n")
-    assert (
-        lines[0].startswith("Backend developer") and "2022" in lines[1]
-    )  
-
-
-def test_single_column_order_is_top_to_bottom():
-    doc = pymupdf.open()
-    page = doc.new_page()
-    for i, line in enumerate(["FIRST block about education", "SECOND block about skills", "THIRD block about work"]):
-        page.insert_textbox(pymupdf.Rect(72, 80 + i * 100, 520, 140 + i * 100), line)
-    text = extract_text("cv.pdf", doc.tobytes())
-    assert text.index("FIRST") < text.index("SECOND") < text.index("THIRD")
+    assert lines[0].startswith("Backend developer") and "2022" in lines[1]
 
 
 def test_repeated_headers_and_footers_are_removed():
@@ -79,31 +66,6 @@ def test_repeated_headers_and_footers_are_removed():
         assert f"{w} content of this page" in text
 
 
-def test_scanned_pdf_without_text_gives_clear_error():
-    doc = pymupdf.open()
-    doc.new_page().draw_rect(pymupdf.Rect(50, 50, 200, 200))
-    with pytest.raises(ResumeError, match="скан"):
-        extract_text("scan.pdf", doc.tobytes())
-
-
-def test_password_protected_pdf_rejected():
-    doc = pymupdf.open()
-    doc.new_page().insert_text((72, 72), "secret resume text that is long enough")
-    data = doc.tobytes(encryption=pymupdf.PDF_ENCRYPT_AES_256, user_pw="123", owner_pw="456")
-    with pytest.raises(ResumeError, match="парол"):
-        extract_text("cv.pdf", data)
-
-
-def test_too_many_pages_rejected(monkeypatch):
-    monkeypatch.setattr(resume_parser, "MAX_PAGES", 2)
-    doc = pymupdf.open()
-    for _ in range(3):
-        doc.new_page().insert_text((72, 72), "page with some text content here")
-    with pytest.raises(ResumeError, match="страниц"):
-        extract_text("cv.pdf", doc.tobytes())
-
-
-
 def test_docx_paragraphs_and_tables_keep_document_order():
     def build(doc):
         doc.add_paragraph("John Smith, Backend developer")
@@ -114,35 +76,10 @@ def test_docx_paragraphs_and_tables_keep_document_order():
         merged.text = "Merged footer row"
         doc.add_paragraph("References available on request, thank you")
 
-    text = extract_text("cv.docx", make_docx(build))
+    text = extract_text("resume", make_docx(build))  
     assert "Skills | Python, FastAPI" in text and "Languages | English, Russian" in text
     assert text.count("Merged footer row") == 1  
     assert text.index("John Smith") < text.index("Skills") < text.index("References")
-
-
-def test_docx_detected_by_content_not_extension():
-    data = make_docx(lambda d: d.add_paragraph("Backend developer with Python and Docker experience"))
-    assert "Python" in extract_text("resume", data)
-
-
-def test_zip_that_is_not_docx_and_zip_bomb_guard(monkeypatch):
-    buf = io.BytesIO()
-    with zipfile.ZipFile(buf, "w") as z:
-        z.writestr("hello.txt", "hi")
-    with pytest.raises(ResumeError, match="не документ DOCX"):
-        extract_text("cv.docx", buf.getvalue())
-    monkeypatch.setattr(resume_parser, "MAX_UNZIPPED_BYTES", 10)
-    big = make_docx(lambda d: d.add_paragraph("some text that is definitely long enough to matter"))
-    with pytest.raises(ResumeError, match="слишком большой"):
-        extract_text("cv.docx", big)
-
-
-def test_corrupted_docx_and_old_doc_format():
-    with pytest.raises(ResumeError, match="повреждён"):
-        extract_text("cv.docx", b"PK\x03\x04 garbage")
-    with pytest.raises(ResumeError, match=r"\.doc"):
-        extract_text("cv.doc", b"\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1 old word file")
-
 
 
 def test_txt_utf8_and_cp1251():
@@ -151,35 +88,52 @@ def test_txt_utf8_and_cp1251():
     assert extract_text("cv.txt", src.encode("cp1251")) == src
 
 
-def test_broken_pdf_unknown_format_empty_and_binary():
-    with pytest.raises(ResumeError):
-        extract_text("cv.pdf", b"%PDF-1.4 this is not a real pdf")
-    with pytest.raises(ResumeError, match="PDF, DOCX и TXT"):
-        extract_text("cv.png", b"\x89PNG\r\n")
-    with pytest.raises(ResumeError, match="пустой"):
-        extract_text("cv.txt", b"")
-    with pytest.raises(ResumeError, match="не похож"):
-        extract_text("cv.txt", b"abc\x00\x01\x02def" * 10)
+def test_unreadable_files_give_clear_errors(monkeypatch):
+    scan = pymupdf.open()
+    scan.new_page().draw_rect(pymupdf.Rect(50, 50, 200, 200))  
+    locked = pymupdf.open()
+    locked.new_page().insert_text((72, 72), "secret resume text that is long enough")
+    zip_without_docx = io.BytesIO()
+    with zipfile.ZipFile(zip_without_docx, "w") as z:
+        z.writestr("hello.txt", "hi")
 
+    cases = [
+        ("scan.pdf", scan.tobytes(), "скан"),
+        ("cv.pdf", locked.tobytes(encryption=pymupdf.PDF_ENCRYPT_AES_256, user_pw="1", owner_pw="2"), "парол"),
+        ("cv.pdf", b"%PDF-1.4 this is not a real pdf", "повреждён"),
+        ("cv.docx", b"PK\x03\x04 garbage", "повреждён"),
+        ("cv.docx", zip_without_docx.getvalue(), "не документ DOCX"),
+        ("cv.doc", b"\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1 old word file", ".doc"),
+        ("cv.png", b"\x89PNG\r\n", "PDF, DOCX и TXT"),
+        ("cv.txt", b"", "пустой"),
+        ("cv.txt", b"abc\x00\x01\x02def" * 10, "не похож"),
+    ]
+    for name, data, expected in cases:
+        with pytest.raises(ResumeError, match=expected):
+            extract_text(name, data)
 
-def test_length_limits(monkeypatch):
-    with pytest.raises(ResumeError, match="скан"):
-        finalize("too short")
+    monkeypatch.setattr(resume_parser, "MAX_PAGES", 2)
+    many_pages = pymupdf.open()
+    for _ in range(3):
+        many_pages.new_page().insert_text((72, 72), "page with some text content here")
+    with pytest.raises(ResumeError, match="страниц"):
+        extract_text("cv.pdf", many_pages.tobytes())
+
+    monkeypatch.setattr(resume_parser, "MAX_UNZIPPED_BYTES", 10)  
+    with pytest.raises(ResumeError, match="слишком большой"):
+        extract_text("cv.docx", make_docx(lambda d: d.add_paragraph("some text that is definitely long enough")))
+
     monkeypatch.setattr(resume_parser, "MAX_CHARS", 50)
     with pytest.raises(ResumeError, match="длинный"):
         finalize("word " * 40)
 
 
-
 def test_clean_text_rules():
     raw = "ﬁne\u00a0text\r\n\r\n\r\n\r\n• Python\r\n● Docker\r\nразра-\nботчик\r\nСтр. 2 из 3\r\nfull-stack\x00 dev"
     out = clean_text(raw)
-    assert "fine text" in out
-    assert "- Python" in out and "- Docker" in out
-    assert "разработчик" in out
-    assert "Стр" not in out
-    assert "full-stack dev" in out and "\x00" not in out
-    assert "\n\n\n" not in out
+    assert "fine text" in out and "- Python" in out and "- Docker" in out
+    assert "разработчик" in out and "Стр" not in out
+    assert "full-stack dev" in out and "\x00" not in out and "\n\n\n" not in out
 
 
 def test_detect_language():

@@ -13,7 +13,7 @@ celery_app.conf.update(
     worker_prefetch_multiplier=1,
     broker_connection_retry_on_startup=True,
     task_default_queue="default",
-    task_routes={"app.tasks.ingest_source": {"queue": "ingest"}},
+    task_routes={"app.tasks.ingest_source": {"queue": "ingest"}, "app.tasks.dedup_vacancies": {"queue": "default"}},
     beat_schedule={
         f"ingest-{name}": {
             "task": "app.tasks.ingest_source",

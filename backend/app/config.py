@@ -13,11 +13,14 @@ class Settings(BaseSettings):
     breaker_threshold: int = 5
     breaker_cooldown_seconds: int = 3600
     cors_origins: list[str] = ["http://localhost:5173"]
-    app_env: str = "dev"  
+    app_env: str = "dev"
     jwt_secret: str = "dev-insecure-secret-change-me"
     jwt_algorithm: str = "HS256"
     access_token_minutes: int = 60
     max_resume_bytes: int = 5 * 1024 * 1024
+    login_max_attempts: int = 5  
+    login_ip_max_attempts: int = 30  
+    login_window_seconds: int = 900
 
 
 settings = Settings()

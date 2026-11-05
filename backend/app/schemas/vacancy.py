@@ -5,6 +5,8 @@ from typing import Literal, Optional
 
 from pydantic import BaseModel, Field, field_validator
 
+from app.text_norm import company_key as _company_key
+
 EMPLOYMENT_MAP = {
     "full time": "full_time",
     "full-time": "full_time",
@@ -85,6 +87,10 @@ class NormalizedVacancy(BaseModel):
     @classmethod
     def _utc(cls, v: datetime) -> datetime:
         return v.replace(tzinfo=timezone.utc) if v.tzinfo is None else v.astimezone(timezone.utc)
+
+    @property
+    def company_key(self) -> str:
+        return _company_key(self.company)
 
     @property
     def dedup_key(self) -> str:

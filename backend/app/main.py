@@ -6,7 +6,7 @@ from sqlalchemy import select, text
 from app.config import settings
 from app.db import SessionLocal
 from app.models import Source
-from app.routers import account, auth, resumes, vacancies
+from app.routers import account, auth, resumes, skills, vacancies
 
 app = FastAPI(title="JobMatch API")
 app.add_middleware(CORSMiddleware, allow_origins=settings.cors_origins, allow_methods=["*"], allow_headers=["*"])
@@ -14,6 +14,7 @@ app.include_router(auth.router)
 app.include_router(account.router)
 app.include_router(vacancies.router)
 app.include_router(resumes.router)
+app.include_router(skills.router)
 
 
 def _check_db() -> bool:
