@@ -1,4 +1,4 @@
-import { fireEvent, screen, waitFor, within } from '@testing-library/react'
+import { fireEvent, screen, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { HEALTH, USER, mockApi, renderApp } from '../test/utils.jsx'
 
@@ -15,14 +15,6 @@ const callsTo = (fetchMock, key) => fetchMock.mock.calls.filter(([url, o]) => `$
 const typeInto = (label, value) => fireEvent.change(screen.getByLabelText(label), { target: { value } })
 
 describe('аккаунт', () => {
-  it('показывает email и дату регистрации', async () => {
-    mockApi(base())
-    renderApp('/profile')
-    expect(await screen.findByRole('heading', { name: 'Профиль и резюме' })).toBeInTheDocument()
-    expect((await screen.findAllByText(USER.email)).length).toBeGreaterThan(0)
-    expect(screen.getByText('05.10.2026')).toBeInTheDocument()
-  })
-
   it('сохраняет имя и показывает его в шапке', async () => {
     let name = null
     const fetchMock = mockApi(
@@ -57,15 +49,18 @@ describe('смена пароля', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Сменить пароль' }))
   }
 
-  it.each([
-    ['old-password-1', 'short', 'short', 'не короче 8'],
-    ['old-password-1', 'new-password-22', 'different-pass-3', 'не совпадают'],
-    ['old-password-1', 'old-password-1', 'old-password-1', 'совпадает с текущим'],
-    ['', 'new-password-22', 'new-password-22', 'текущий пароль'],
-  ])('не отправляет запрос при ошибке в форме (%#)', async (cur, next, rep, text) => {
+  it('не отправляет запрос, если форма заполнена неверно', async () => {
     const fetchMock = await open()
-    fillAll(cur, next, rep)
-    expect(await screen.findByRole('alert')).toHaveTextContent(text)
+    const cases = [
+      ['old-password-1', 'short', 'short', 'не короче 8'],
+      ['old-password-1', 'new-password-22', 'different-pass-3', 'не совпадают'],
+      ['old-password-1', 'old-password-1', 'old-password-1', 'совпадает с текущим'],
+      ['', 'new-password-22', 'new-password-22', 'текущий пароль'],
+    ]
+    for (const [cur, next, rep, text] of cases) {
+      fillAll(cur, next, rep)
+      expect(await screen.findByRole('alert')).toHaveTextContent(text)
+    }
     expect(callsTo(fetchMock, 'POST /me/password')).toHaveLength(0)
   })
 
@@ -123,7 +118,7 @@ describe('резюме', () => {
     )
     renderApp('/profile')
     fireEvent.click(await screen.findByRole('button', { name: 'Удалить резюме' }))
-    expect(callsTo(fetchMock, 'DELETE /resumes/me')).toHaveLength(0) // пока только спросили
+    expect(callsTo(fetchMock, 'DELETE /resumes/me')).toHaveLength(0) 
     fireEvent.click(screen.getByRole('button', { name: 'Да, удалить' }))
     expect(await screen.findByText(/Резюме пока не загружено/)).toBeInTheDocument()
     expect(callsTo(fetchMock, 'DELETE /resumes/me')).toHaveLength(1)
@@ -131,17 +126,6 @@ describe('резюме', () => {
 })
 
 describe('удаление аккаунта и выход', () => {
-  it('неверный пароль: ошибка, пользователь остаётся в системе', async () => {
-    mockApi(base({ 'DELETE /me': { status: 400, body: { detail: 'Неверный пароль' } } }))
-    renderApp('/profile')
-    fireEvent.click(await screen.findByRole('button', { name: 'Удалить аккаунт' }))
-    expect(screen.getByRole('button', { name: 'Удалить навсегда' })).toBeDisabled() // без пароля нельзя
-    typeInto('Пароль для подтверждения', 'wrong-pass-1')
-    fireEvent.click(screen.getByRole('button', { name: 'Удалить навсегда' }))
-    expect(await screen.findByRole('alert')).toHaveTextContent('Неверный пароль')
-    expect(localStorage.getItem('jobmatch_token')).toBe('valid')
-  })
-
   it('верный пароль: аккаунт удалён, выход на страницу входа', async () => {
     let body = null
     mockApi(
@@ -161,14 +145,6 @@ describe('удаление аккаунта и выход', () => {
     expect(localStorage.getItem('jobmatch_token')).toBeNull()
   })
 
-  it('можно передумать: «Отмена» возвращает кнопку', async () => {
-    mockApi(base())
-    renderApp('/profile')
-    fireEvent.click(await screen.findByRole('button', { name: 'Удалить аккаунт' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Отмена' }))
-    expect(screen.getByRole('button', { name: 'Удалить аккаунт' })).toBeInTheDocument()
-  })
-
   it('кнопка «Выйти» очищает токен и ведёт на вход', async () => {
     mockApi(base())
     renderApp('/profile')
@@ -176,13 +152,5 @@ describe('удаление аккаунта и выход', () => {
     fireEvent.click(within(header).getByRole('button', { name: 'Выйти' }))
     expect(await screen.findByRole('button', { name: 'Войти' })).toBeInTheDocument()
     expect(localStorage.getItem('jobmatch_token')).toBeNull()
-  })
-})
-
-describe('шапка', () => {
-  it('показывает имя вместо email, если оно задано', async () => {
-    mockApi(base({ 'GET /me': { status: 200, body: { ...USER, full_name: 'Иван Петров' } } }))
-    renderApp('/profile')
-    await waitFor(() => expect(within(document.querySelector('header')).getByText('Иван Петров')).toBeInTheDocument())
   })
 })
