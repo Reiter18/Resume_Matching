@@ -7,21 +7,6 @@ beforeEach(() => localStorage.clear())
 afterEach(() => vi.unstubAllGlobals())
 
 describe('api-клиент', () => {
-  it('добавляет токен в заголовок Authorization', async () => {
-    const fetchMock = mockApi({ 'GET /me': { status: 200, body: { id: 1 } } })
-    setToken('abc')
-    await api('/me')
-    expect(fetchMock.mock.calls[0][1].headers.Authorization).toBe('Bearer abc')
-  })
-
-  it('без токена заголовка нет, а JSON-тело получает Content-Type', async () => {
-    const fetchMock = mockApi({ 'POST /auth/login': { status: 200, body: {} } })
-    await api('/auth/login', { method: 'POST', body: '{}' })
-    const headers = fetchMock.mock.calls[0][1].headers
-    expect(headers.Authorization).toBeUndefined()
-    expect(headers['Content-Type']).toBe('application/json')
-  })
-
   it('берёт текст ошибки из ответа сервера', async () => {
     mockApi({ 'GET /x': { status: 409, body: { detail: 'Уже есть' } } })
     await expect(api('/x')).rejects.toMatchObject({ status: 409, message: 'Уже есть' })
@@ -42,8 +27,17 @@ describe('api-клиент', () => {
     expect(localStorage.getItem('jobmatch_token')).toBe('keep')
   })
 
-  it('204 возвращает null', async () => {
-    mockApi({ 'DELETE /resumes/me': { status: 204 } })
+})
+
+describe('api-клиент: заголовки и ответы', () => {
+  it('токен идёт в Authorization, JSON-тело получает Content-Type, 204 даёт null', async () => {
+    const fetchMock = mockApi({ 'GET /me': { status: 200, body: { id: 1 } }, 'POST /auth/login': { status: 200, body: {} }, 'DELETE /resumes/me': { status: 204 } })
+    await api('/auth/login', { method: 'POST', body: '{}' })
+    expect(fetchMock.mock.calls[0][1].headers.Authorization).toBeUndefined() 
+    expect(fetchMock.mock.calls[0][1].headers['Content-Type']).toBe('application/json')
+    setToken('abc')
+    await api('/me')
+    expect(fetchMock.mock.calls[1][1].headers.Authorization).toBe('Bearer abc')
     expect(await api('/resumes/me', { method: 'DELETE' })).toBeNull()
   })
 })

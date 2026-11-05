@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ApiError, api } from '../../api/client.js'
+import KeywordsEditor from './KeywordsEditor.jsx'
+import ResumeUpload from './ResumeUpload.jsx'
 
 const LANGUAGES = { ru: 'русский', en: 'английский', mixed: 'смешанный' }
 
@@ -24,8 +26,14 @@ export default function ResumeCard() {
   const resume = useResume()
   const [showFull, setShowFull] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const [replacing, setReplacing] = useState(false)
 
-  const fullText = useQuery({ queryKey: ['resume-text'], queryFn: () => api('/resumes/me/text'), enabled: showFull && Boolean(resume.data), retry: false })
+  const fullText = useQuery({
+    queryKey: ['resume-text'],
+    queryFn: () => api('/resumes/me/text'),
+    enabled: showFull && Boolean(resume.data),
+    retry: false,
+  })
   const remove = useMutation({
     mutationFn: () => api('/resumes/me', { method: 'DELETE' }),
     onSuccess: () => {
@@ -38,7 +46,14 @@ export default function ResumeCard() {
 
   if (resume.isLoading) return <p className="text-sm text-slate-500">Загрузка…</p>
   if (resume.isError) return <p className="text-sm text-red-600">Не удалось загрузить резюме</p>
-  if (resume.data === null) return <p className="text-sm text-slate-500">Резюме пока не загружено. Загрузка появится на 4-й неделе.</p>
+  if (resume.data === null) {
+    return (
+      <div className="flex flex-col gap-3">
+        <p className="text-sm text-slate-500">Резюме пока не загружено. Загрузите файл или вставьте текст.</p>
+        <ResumeUpload />
+      </div>
+    )
+  }
 
   const r = resume.data
   return (
@@ -60,6 +75,9 @@ export default function ResumeCard() {
         <button type="button" onClick={() => setShowFull((v) => !v)} className="text-blue-600 underline">
           {showFull ? 'Свернуть' : 'Показать полный текст'}
         </button>
+        <button type="button" onClick={() => setReplacing((v) => !v)} className="text-blue-600 underline">
+          {replacing ? 'Не заменять' : 'Заменить резюме'}
+        </button>
         {!confirmDelete ? (
           <button type="button" onClick={() => setConfirmDelete(true)} className="text-red-600 underline">
             Удалить резюме
@@ -76,6 +94,15 @@ export default function ResumeCard() {
           </span>
         )}
       </div>
+
+      {replacing && (
+        <div className="mt-4 rounded-lg border border-slate-200 p-4">
+          <p className="mb-3 text-xs text-amber-700">Новое резюме заменит текущее, ключевые слова придётся добавить заново.</p>
+          <ResumeUpload onUploaded={() => setReplacing(false)} />
+        </div>
+      )}
+
+      <KeywordsEditor key={r.id} resume={r} />
     </div>
   )
 }

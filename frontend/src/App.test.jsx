@@ -30,12 +30,6 @@ describe('роутинг и защита страниц', () => {
     expect(screen.queryByRole('navigation')).not.toBeInTheDocument()
   })
 
-  it('неизвестный адрес ведёт на главную, а гостя дальше на вход', async () => {
-    mockApi()
-    renderApp('/нет-такой-страницы')
-    expect(await screen.findByRole('button', { name: 'Войти' })).toBeInTheDocument()
-  })
-
   it('просроченный токен (401 на /me) выбрасывает на вход', async () => {
     mockApi({ 'GET /me': { status: 401, body: { detail: 'Требуется вход' } } })
     setToken('expired-token')

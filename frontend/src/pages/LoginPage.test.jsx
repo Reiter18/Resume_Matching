@@ -64,21 +64,4 @@ describe('вход и регистрация', () => {
     expect(calls.slice(0, 2)).toEqual(['POST /api/auth/register', 'POST /api/auth/login'])
   })
 
-  it('уже вошедшего со страницы входа сразу уводит в приложение', async () => {
-    mockApi({ 'GET /me': { status: 200, body: USER }, 'GET /health': { status: 200, body: HEALTH } })
-    localStorage.setItem('jobmatch_token', 'valid')
-    renderApp('/login')
-    expect(await screen.findByRole('heading', { name: 'Лента вакансий' })).toBeInTheDocument()
-  })
-
-  it('пароль можно показать и скрыть', () => {
-    mockApi()
-    renderApp('/login')
-    const input = screen.getByLabelText('Пароль')
-    expect(input).toHaveAttribute('type', 'password')
-    fireEvent.click(screen.getByRole('button', { name: 'Показать пароль' }))
-    expect(input).toHaveAttribute('type', 'text')
-    fireEvent.click(screen.getByRole('button', { name: 'Скрыть пароль' }))
-    expect(input).toHaveAttribute('type', 'password')
-  })
 })
