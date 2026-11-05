@@ -57,7 +57,7 @@ def test_search_ranking_and_alias_hint(dictionary):
 def test_seed_is_idempotent_and_cleans_stale_aliases(db):
     skills, aliases = seed_skills(db)
     assert skills == len(SKILLS) and aliases > 250
-    count = lambda model: db.scalar(select(func.count()).select_from(model))  
+    count = lambda model: db.scalar(select(func.count()).select_from(model))  # noqa: E731
     first = (count(Skill), count(SkillAlias))
     python_id = db.scalar(select(Skill.id).where(Skill.name == "python"))
     db.add(SkillAlias(alias="устаревший синоним", skill_id=python_id))
