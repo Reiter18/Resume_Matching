@@ -96,8 +96,7 @@ export default function KeywordsEditor({ resume }) {
     <div className="mt-4 border-t border-slate-100 pt-4">
       <h3 className="mb-1 text-sm font-semibold">Ключевые слова</h3>
       <p className="mb-3 text-xs text-slate-500">
-        По ним мы подбираем вакансии. Добавьте навыки, которых не хватает, и уберите лишние. Автоматическое извлечение из текста резюме
-        появится на 5-й неделе.
+        Слова найдены автоматически по тексту резюме: проверьте их, добавьте недостающие и уберите лишние.
       </p>
 
       {skills.length === 0 ? (
