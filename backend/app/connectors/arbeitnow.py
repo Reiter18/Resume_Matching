@@ -28,9 +28,7 @@ class ArbeitnowConnector(BaseConnector):
     base_url = "https://arbeitnow.com/api/job-board-api"
 
     def __init__(self, client: Optional[httpx.Client] = None, retry_wait: float = 1.0, page_delay: float = 0.5):
-        self.client = client or httpx.Client(
-            timeout=settings.http_timeout, headers={"User-Agent": settings.user_agent}
-        )
+        self.client = client or httpx.Client(timeout=settings.http_timeout, headers={"User-Agent": settings.user_agent})
         self.page_delay = page_delay
         self._get = retry(
             retry=retry_if_exception_type(_Transient),
@@ -41,7 +39,7 @@ class ArbeitnowConnector(BaseConnector):
 
     def _get_once(self, url: str) -> dict:
         try:
-            resp = self.client.get(url)
+            resp = self.client.get(url, follow_redirects=True)
         except (httpx.TimeoutException, httpx.TransportError) as e:
             raise _Transient(str(e)) from e
         if resp.status_code == 429 or resp.status_code >= 500:
@@ -80,7 +78,9 @@ class ArbeitnowConnector(BaseConnector):
             title=raw["title"],
             company=raw["company_name"],
             location=raw.get("location") or None,
-            work_format=detect_work_format(raw.get("remote"), f"{raw.get('title', '')} {text}", bool(raw.get("location"))),
+            work_format=detect_work_format(
+                raw.get("remote"), f"{raw.get('title', '')} {text}", bool(raw.get("location"))
+            ),
             employment_types=raw.get("job_types") or [],
             description_text=text,
             tags=raw.get("tags") or [],

@@ -2,8 +2,19 @@ from datetime import datetime
 from typing import Optional
 
 from sqlalchemy import (
-    ARRAY, BigInteger, Boolean, DateTime, Float, ForeignKey, Index, Integer,
-    String, Text, UniqueConstraint, func,
+    ARRAY,
+    BigInteger,
+    Boolean,
+    DateTime,
+    Float,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+    func,
+    text,
 )
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
@@ -22,6 +33,7 @@ class Source(Base):
     enabled: Mapped[bool] = mapped_column(Boolean, default=True)
     consecutive_failures: Mapped[int] = mapped_column(Integer, default=0)
     last_success_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
+    last_failure_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
     last_error: Mapped[Optional[str]] = mapped_column(Text)
 
 
@@ -29,8 +41,9 @@ class Skill(Base):
     __tablename__ = "skills"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    name: Mapped[str] = mapped_column(String(100), unique=True)  
+    name: Mapped[str] = mapped_column(String(100), unique=True)
     weight: Mapped[float] = mapped_column(Float, default=1.0)
+    category: Mapped[Optional[str]] = mapped_column(String(30))
 
 
 class SkillAlias(Base):
@@ -46,8 +59,10 @@ class Vacancy(Base):
         UniqueConstraint("source_id", "external_id", name="uq_vacancy_source_external"),
         Index("ix_vacancies_published_at", "published_at"),
         Index("ix_vacancies_dedup_key", "dedup_key"),
+        Index("ix_vacancies_company_key", "company_key"),
+        Index("ix_vacancies_dedup_pending", "id", postgresql_where=text("dedup_checked_at IS NULL")),
         Index("ix_vacancies_content_hash", "content_hash"),
-        Index("ix_vacancies_skills", "skills", postgresql_using="gin"),  
+        Index("ix_vacancies_skills", "skills", postgresql_using="gin"),
     )
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
@@ -58,22 +73,24 @@ class Vacancy(Base):
     title: Mapped[str] = mapped_column(String(500))
     company: Mapped[str] = mapped_column(String(255))
     location: Mapped[Optional[str]] = mapped_column(String(255))
-    work_format: Mapped[str] = mapped_column(String(10), default="unknown")  
+    work_format: Mapped[str] = mapped_column(String(10), default="unknown")
     employment_types: Mapped[list[str]] = mapped_column(ARRAY(String), default=list)
-    schedule: Mapped[Optional[str]] = mapped_column(String(20))  
+    schedule: Mapped[Optional[str]] = mapped_column(String(20))
     hours_per_week: Mapped[Optional[int]] = mapped_column(Integer)
     experience_years_min: Mapped[Optional[float]] = mapped_column(Float)
-    salary_min: Mapped[Optional[int]] = mapped_column(Integer)  
+    salary_min: Mapped[Optional[int]] = mapped_column(Integer)
     salary_max: Mapped[Optional[int]] = mapped_column(Integer)
     salary_currency: Mapped[Optional[str]] = mapped_column(String(3))
     description_text: Mapped[str] = mapped_column(Text)
-    tags: Mapped[list[str]] = mapped_column(ARRAY(String), default=list)  
-    skills: Mapped[list[str]] = mapped_column(ARRAY(String), default=list)  
+    tags: Mapped[list[str]] = mapped_column(ARRAY(String), default=list)
+    skills: Mapped[list[str]] = mapped_column(ARRAY(String), default=list)
     published_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
 
     content_hash: Mapped[str] = mapped_column(String(64))
     dedup_key: Mapped[str] = mapped_column(String(255))
-    canonical_id: Mapped[Optional[int]] = mapped_column(ForeignKey("vacancies.id"))  
+    company_key: Mapped[str] = mapped_column(String(255))
+    dedup_checked_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
+    canonical_id: Mapped[Optional[int]] = mapped_column(ForeignKey("vacancies.id"))
     fetched_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     source: Mapped[Source] = relationship()
@@ -85,6 +102,7 @@ class User(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     email: Mapped[str] = mapped_column(String(255), unique=True)
     password_hash: Mapped[str] = mapped_column(String(255))
+    full_name: Mapped[Optional[str]] = mapped_column(String(100))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
@@ -97,6 +115,7 @@ class Resume(Base):
     raw_text: Mapped[str] = mapped_column(Text)
     skills: Mapped[list[str]] = mapped_column(ARRAY(String), default=list)
     experience_years: Mapped[Optional[float]] = mapped_column(Float)
+    language: Mapped[Optional[str]] = mapped_column(String(10))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
@@ -136,9 +155,9 @@ class ShareLink(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
     token_hash: Mapped[str] = mapped_column(String(64), unique=True)
-    title: Mapped[Optional[str]] = mapped_column(String(100))  
+    title: Mapped[Optional[str]] = mapped_column(String(100))
     allowed_fields: Mapped[list[str]] = mapped_column(ARRAY(String), default=list)
-    min_score: Mapped[Optional[float]] = mapped_column(Float) 
+    min_score: Mapped[Optional[float]] = mapped_column(Float)
     expires_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
     revoked_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
     view_count: Mapped[int] = mapped_column(Integer, default=0)
@@ -146,12 +165,24 @@ class ShareLink(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
+class DeadLetter(Base):
+    __tablename__ = "dead_letters"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    task_name: Mapped[str] = mapped_column(String(200))
+    task_id: Mapped[Optional[str]] = mapped_column(String(100))
+    args: Mapped[Optional[dict]] = mapped_column(JSONB)
+    error: Mapped[str] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    resolved_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
+
+
 class NotificationSettings(Base):
     __tablename__ = "notification_settings"
 
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
     min_score: Mapped[float] = mapped_column(Float, default=0.7)
-    digest: Mapped[str] = mapped_column(String(10), default="off")  
+    digest: Mapped[str] = mapped_column(String(10), default="off")
     in_app_enabled: Mapped[bool] = mapped_column(Boolean, default=True)
 
 

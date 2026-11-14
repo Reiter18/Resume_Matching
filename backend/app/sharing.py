@@ -28,6 +28,7 @@ def is_active(expires_at: Optional[datetime], revoked_at: Optional[datetime], no
 
 
 def build_public_payload(matches: list[dict], allowed_fields: list[str], min_score: Optional[float] = None) -> dict:
+    """Собирает ответ публичной страницы по белому списку. Каждый match: {title, company, url, score, breakdown, ...}."""
     allowed = set(allowed_fields) & ALLOWED_FIELDS
     items = []
     for m in matches:

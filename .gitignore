@@ -4,3 +4,6 @@ __pycache__/
 .pytest_cache/
 pgdata/
 node_modules/
+celerybeat-schedule*
+dist/
+.ruff_cache/

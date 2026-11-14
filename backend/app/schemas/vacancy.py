@@ -5,19 +5,27 @@ from typing import Literal, Optional
 
 from pydantic import BaseModel, Field, field_validator
 
+from app.text_norm import company_key as _company_key
 
 EMPLOYMENT_MAP = {
-    "full time": "full_time", "full-time": "full_time", "полная занятость": "full_time",
-    "part time": "part_time", "part-time": "part_time", "частичная занятость": "part_time",
-    "contract": "contract", "freelance": "contract", "проектная работа": "contract",
-    "internship": "internship", "working student": "internship", "стажировка": "internship",
+    "full time": "full_time",
+    "full-time": "full_time",
+    "полная занятость": "full_time",
+    "part time": "part_time",
+    "part-time": "part_time",
+    "частичная занятость": "part_time",
+    "contract": "contract",
+    "freelance": "contract",
+    "проектная работа": "contract",
+    "internship": "internship",
+    "working student": "internship",
+    "стажировка": "internship",
 }
 WorkFormat = Literal["remote", "hybrid", "onsite", "unknown"]
 Schedule = Literal["full_day", "flexible", "shift", "rotational"]
 
 
 def detect_work_format(is_remote: Optional[bool], text: str, has_location: bool) -> str:
-    """remote -> remote; иначе по словам в тексте hybrid/гибрид; есть локация -> onsite; иначе unknown."""
     t = text.lower()
     if is_remote:
         return "remote"
@@ -79,6 +87,10 @@ class NormalizedVacancy(BaseModel):
     @classmethod
     def _utc(cls, v: datetime) -> datetime:
         return v.replace(tzinfo=timezone.utc) if v.tzinfo is None else v.astimezone(timezone.utc)
+
+    @property
+    def company_key(self) -> str:
+        return _company_key(self.company)
 
     @property
     def dedup_key(self) -> str:
