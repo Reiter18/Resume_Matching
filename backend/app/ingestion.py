@@ -8,9 +8,13 @@ from sqlalchemy.orm import Session
 
 from app.config import settings
 from app.connectors import REGISTRY, SourceUnavailable
+from app.extract import SkillExtractor, vacancy_params
 from app.models import Source, Vacancy
+from app.skills import SkillDictionary
 
 log = logging.getLogger(__name__)
+
+PARAMS = ("work_format", "schedule", "hours_per_week", "experience_years_min", "salary_min", "salary_max", "salary_currency")
 
 
 def circuit_open(source: Source, now: Optional[datetime] = None) -> bool:
@@ -32,6 +36,7 @@ def run_source(session: Session, name: str, max_pages: int = 1) -> int:
         log.warning("источник %s временно отключён (%s сбоев подряд)", name, source.consecutive_failures)
         return 0
 
+    extractor = SkillExtractor(SkillDictionary.load(session).terms())
     saved = 0
     try:
         for v in connector.fetch(max_pages=max_pages):
@@ -42,20 +47,15 @@ def run_source(session: Session, name: str, max_pages: int = 1) -> int:
                 title=v.title,
                 company=v.company,
                 location=v.location,
-                work_format=v.work_format,
                 employment_types=v.employment_types,
-                schedule=v.schedule,
-                hours_per_week=v.hours_per_week,
-                experience_years_min=v.experience_years_min,
-                salary_min=v.salary_min,
-                salary_max=v.salary_max,
-                salary_currency=v.salary_currency,
                 description_text=v.description_text,
                 tags=v.tags,
+                skills=extractor.find(f"{v.title}\n{' '.join(v.tags)}\n{v.description_text}"),
                 published_at=v.published_at,
                 content_hash=v.content_hash,
                 dedup_key=v.dedup_key,
                 company_key=v.company_key,
+                **vacancy_params(v),
             )
             changed = Vacancy.content_hash != stmt.excluded.content_hash
             stmt = stmt.on_conflict_do_update(
@@ -65,6 +65,7 @@ def run_source(session: Session, name: str, max_pages: int = 1) -> int:
                     "description_text": stmt.excluded.description_text,
                     "content_hash": stmt.excluded.content_hash,
                     "company_key": stmt.excluded.company_key,
+                    **{c: getattr(stmt.excluded, c) for c in ("skills", *PARAMS)},
                     "fetched_at": datetime.now(timezone.utc),
                     "dedup_checked_at": case((changed, None), else_=Vacancy.dedup_checked_at),
                     "canonical_id": case((changed, None), else_=Vacancy.canonical_id),
