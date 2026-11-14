@@ -97,7 +97,7 @@ export default function ResumeCard() {
 
       {replacing && (
         <div className="mt-4 rounded-lg border border-slate-200 p-4">
-          <p className="mb-3 text-xs text-amber-700">Новое резюме заменит текущее, ключевые слова придётся добавить заново.</p>
+          <p className="mb-3 text-xs text-amber-700">Новое резюме заменит текущее, ключевые слова найдутся заново.</p>
           <ResumeUpload onUploaded={() => setReplacing(false)} />
         </div>
       )}

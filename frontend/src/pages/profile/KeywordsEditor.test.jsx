@@ -83,7 +83,7 @@ describe('ключевые слова', () => {
     await screen.findByLabelText('Добавить ключевое слово')
     fireEvent.focus(input())
     type('py')
-    expect(calls(fetchMock, 'GET /skills?q=py&limit=8')).toHaveLength(0) // сразу запроса нет, ждём паузу
+    expect(calls(fetchMock, 'GET /skills?q=py&limit=8')).toHaveLength(0) 
     const option = await screen.findByRole('option', { name: /python/ })
     expect(calls(fetchMock, 'GET /skills?q=py&limit=8')).toHaveLength(1)
     fireEvent.mouseDown(option)
