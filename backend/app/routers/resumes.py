@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 
 from app.config import settings
 from app.deps import get_current_user, get_db
+from app.extract import SkillExtractor, resume_experience
 from app.models import Resume, User
 from app.resume_parser import ResumeError, detect_language, extract_text, finalize
 from app.schemas.api import ResumeFullTextOut, ResumeOut, ResumeSkillsIn, ResumeTextIn
@@ -17,15 +18,17 @@ def _out(r: Resume, db: Session) -> ResumeOut:
     _, unknown = SkillDictionary.load(db).normalize(skills) if skills else ([], [])
     return ResumeOut(
         id=r.id, original_filename=r.original_filename, char_count=len(r.raw_text), language=r.language,
-        preview=r.raw_text[:500], skills=skills, unknown_skills=unknown, created_at=r.created_at,
+        experience_years=r.experience_years, preview=r.raw_text[:500], skills=skills, unknown_skills=unknown, created_at=r.created_at,
     )  # fmt: skip
 
 
 def _replace_resume(db: Session, user: User, filename: str, text: str) -> Resume:
     db.execute(delete(Resume).where(Resume.user_id == user.id))
+    skills = SkillExtractor(SkillDictionary.load(db).terms()).find(text)[:100]
     resume = Resume(
-        user_id=user.id, original_filename=filename[:255], raw_text=text, skills=[], language=detect_language(text)
-    )
+        user_id=user.id, original_filename=filename[:255], raw_text=text, skills=skills,
+        experience_years=resume_experience(text), language=detect_language(text),
+    )  # fmt: skip
     db.add(resume)
     db.commit()
     db.refresh(resume)

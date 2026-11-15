@@ -8,6 +8,7 @@ from app.deps import get_current_user, get_db
 from app.models import User, Vacancy
 from app.schemas.api import DuplicateOut, VacancyDetailOut, VacancyOut, VacancyPage
 from app.schemas.vacancy import WorkFormat
+from app.skills import SkillDictionary
 
 router = APIRouter(prefix="/vacancies", tags=["vacancies"])
 
@@ -22,6 +23,7 @@ def _out(v: Vacancy) -> dict:
         employment_types=v.employment_types or [],
         schedule=v.schedule,
         hours_per_week=v.hours_per_week,
+        experience_years_min=v.experience_years_min,
         salary_min=v.salary_min,
         salary_max=v.salary_max,
         salary_currency=v.salary_currency,
@@ -38,6 +40,7 @@ def list_vacancies(
     q: Optional[str] = Query(None, max_length=100, description="поиск по названию и компании"),
     work_format: Optional[WorkFormat] = None,
     employment_type: Optional[str] = Query(None, max_length=30),
+    skill: Optional[str] = Query(None, max_length=50, description="навык или синоним: 'питон' найдёт python"),
     min_salary: Optional[int] = Query(None, ge=0, description="в месяц; вакансии без зарплаты не показываются"),
     limit: int = Query(20, ge=1, le=50),
     offset: int = Query(0, ge=0),
@@ -52,6 +55,9 @@ def list_vacancies(
         conds.append(Vacancy.work_format == work_format)
     if employment_type:
         conds.append(literal(employment_type.strip().lower()) == any_(Vacancy.employment_types))
+    if skill and skill.strip():
+        name = SkillDictionary.load(db).canonical(skill) or skill.strip().lower()
+        conds.append(literal(name) == any_(Vacancy.skills))
     if min_salary is not None:
         conds.append(or_(Vacancy.salary_max >= min_salary, Vacancy.salary_min >= min_salary))
 

@@ -41,11 +41,14 @@ class SkillDictionary:
 
     @classmethod
     def load(cls, session: Session) -> "SkillDictionary":
-        rows = session.scalars(select(Skill).order_by(Skill.id)).all()  # порядок вставки = порядок в skills_data
+        rows = session.scalars(select(Skill).order_by(Skill.id)).all() 
         skills = [SkillInfo(s.name, s.category, s.weight) for s in rows]
         by_id = {s.id: s.name for s in rows}
         aliases = {a.alias: by_id[a.skill_id] for a in session.scalars(select(SkillAlias)) if a.skill_id in by_id}
         return cls(skills, aliases)
+
+    def terms(self) -> list[tuple[str, str]]:
+        return [(n, n) for n in self.skills] + list(self._aliases.items())
 
     def canonical(self, text: str) -> Optional[str]:
         key = squash(text)
