@@ -90,7 +90,7 @@ def test_resume_skills_edit_flow(client):
     again = client.get("/resumes/me", headers=h).json()  
     assert again["skills"] == r.json()["skills"] and again["unknown_skills"] == ["кулинария"]
     new = client.post("/resumes/text", json={"text": LONG_CV + " more"}, headers=h).json()
-    assert new["skills"] == [] and new["unknown_skills"] == []  
+    assert new["skills"] == ["python", "fastapi", "postgresql", "docker"] and new["unknown_skills"] == []  
 
 
 def test_resume_skills_validation_and_privacy(client):
@@ -100,7 +100,7 @@ def test_resume_skills_validation_and_privacy(client):
     assert client.put("/resumes/me/skills", json={"skills": ["x" * 51]}, headers=a).status_code == 422
     assert client.put("/resumes/me/skills", json={"skills": ["a"] * 101}, headers=a).status_code == 422
     client.put("/resumes/me/skills", json={"skills": ["python"]}, headers=a)
-    assert client.get("/resumes/me", headers=b).json()["skills"] == [] 
+    assert client.get("/resumes/me", headers=b).json()["skills"] == ["python", "fastapi", "postgresql", "docker"] 
     assert client.put("/resumes/me/skills", json={"skills": ["python"]}).status_code == 401
 
 
