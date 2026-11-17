@@ -32,8 +32,8 @@ const mustHave = (name) => group(name).getByLabelText(/Обязательно/)
 
 it('сохраняет выбранное и обязательные критерии', async () => {
   const { sent } = setup(EMPTY)
-  await screen.findByText('Что вы ищете')
-  expect(mustHave('Формат работы')).toBeDisabled() 
+  await screen.findByRole('group', { name: 'Формат работы' })
+  expect(mustHave('Формат работы')).toBeDisabled()
 
   fireEvent.click(group('Формат работы').getByLabelText('Удалённо'))
   fireEvent.click(mustHave('Формат работы'))
