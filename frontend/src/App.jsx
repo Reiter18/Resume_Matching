@@ -4,6 +4,7 @@ import ProtectedRoute from './auth/ProtectedRoute.jsx'
 import FeedPage from './pages/FeedPage.jsx'
 import LoginPage from './pages/LoginPage.jsx'
 import Placeholder from './pages/Placeholder.jsx'
+import PreferencesPage from './pages/PreferencesPage.jsx'
 import ProfilePage from './pages/ProfilePage.jsx'
 
 export default function App() {
@@ -17,7 +18,7 @@ export default function App() {
           <Route index element={<FeedPage />} />
           <Route path="vacancies/:id" element={<Placeholder title="Вакансия и разбор оценки" week={8} />} />
           <Route path="profile" element={<ProfilePage />} />
-          <Route path="preferences" element={<Placeholder title="Что вы ищете" week={6} />} />
+          <Route path="preferences" element={<PreferencesPage />} />
           <Route path="notifications" element={<Placeholder title="Уведомления" week={10} />} />
         </Route>
       </Route>
