@@ -173,3 +173,25 @@ class Preferences(BaseModel):
         if empty:
             raise ValueError(f"обязательный критерий без значения: {', '.join(empty)}")
         return self
+
+
+class CriterionOut(BaseModel):
+    score: Optional[float]  
+    weight: float
+    status: Literal["match", "partial", "mismatch", "unknown"]
+    text: str
+    matched: Optional[list[str]] = None 
+    missing: Optional[list[str]] = None
+
+
+class MatchOut(BaseModel):
+    vacancy: VacancyOut
+    score: Optional[int]  
+    criteria: dict[str, CriterionOut]
+
+
+class MatchPage(BaseModel):
+    items: list[MatchOut]
+    total: int
+    limit: int
+    offset: int
