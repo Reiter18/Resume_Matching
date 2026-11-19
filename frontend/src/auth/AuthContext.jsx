@@ -10,14 +10,18 @@ export function AuthProvider({ children }) {
   const queryClient = useQueryClient()
 
   useEffect(() => {
-    const sync = () => setTokenState(getToken())
+    const sync = () => {
+      const current = getToken()
+      if (!current) queryClient.clear() 
+      setTokenState(current)
+    }
     window.addEventListener('auth-change', sync)
     window.addEventListener('storage', sync)
     return () => {
       window.removeEventListener('auth-change', sync)
       window.removeEventListener('storage', sync)
     }
-  }, [])
+  }, [queryClient])
 
   const login = useCallback(async (email, password) => {
     const data = await api('/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) })

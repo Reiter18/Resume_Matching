@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useInfiniteQuery } from '@tanstack/react-query'
+import { keepPreviousData, useInfiniteQuery } from '@tanstack/react-query'
 import { api } from '../api/client.js'
 import { useDebouncedValue } from '../hooks/useDebouncedValue.js'
 import Filters, { EMPTY } from './feed/Filters.jsx'
@@ -21,11 +21,12 @@ export default function FeedPage() {
     queryKey: ['vacancies', applied],
     queryFn: ({ pageParam }) => api(`/vacancies?${queryString(applied, pageParam)}`),
     initialPageParam: 0,
+    placeholderData: keepPreviousData, 
     getNextPageParam: (last) => (last.offset + last.items.length < last.total ? last.offset + last.limit : undefined),
   })
 
   const pages = feed.data?.pages ?? []
-  const items = [...new Map(pages.flatMap((p) => p.items).map((v) => [v.id, v])).values()]  
+  const items = [...new Map(pages.flatMap((p) => p.items).map((v) => [v.id, v])).values()] 
 
   return (
     <div>
@@ -37,12 +38,12 @@ export default function FeedPage() {
           {feed.error.message}
         </p>
       )}
-      {feed.isSuccess && items.length === 0 && <p className="text-sm text-slate-500">Ничего не найдено. Измените фильтры.</p>}
+      {feed.isSuccess && !feed.isPlaceholderData && items.length === 0 && <p className="text-sm text-slate-500">Ничего не найдено. Измените фильтры.</p>}
       {items.length > 0 && (
-        <>
+        <div className={feed.isPlaceholderData ? 'opacity-50' : undefined}>
           <p className="mb-2 text-xs text-slate-500">Найдено: {pages[0].total}</p>
           <VacancyList key={JSON.stringify(applied)} items={items} hasMore={feed.hasNextPage} loading={feed.isFetching} onMore={feed.fetchNextPage} />
-        </>
+        </div>
       )}
     </div>
   )

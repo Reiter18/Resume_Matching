@@ -1,21 +1,24 @@
 import { useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../../api/client.js'
+import { optimistic } from '../../api/optimistic.js'
 import { useAuth } from '../../auth/AuthContext.jsx'
 import { buttonClass, inputClass } from './Card.jsx'
 
 export default function NameForm() {
-  const { user } = useAuth()
+  const { user, token } = useAuth()
   const queryClient = useQueryClient()
   const [name, setName] = useState(user.full_name || '')
   const [saved, setSaved] = useState(false)
 
+  const key = ['me', token]
   const mutation = useMutation({
     mutationFn: (full_name) => api('/me', { method: 'PATCH', body: JSON.stringify({ full_name }) }),
+    ...optimistic(queryClient, key, (old, full_name) => ({ ...old, full_name })),
     onSuccess: (updated) => {
+      queryClient.setQueryData(key, updated)
       setName(updated.full_name || '')
       setSaved(true)
-      queryClient.invalidateQueries({ queryKey: ['me'] })
     },
   })
 

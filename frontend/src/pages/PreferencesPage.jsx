@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '../api/client.js'
+import { optimistic } from '../api/optimistic.js'
 import { EMPLOYMENT, SCHEDULES, WORK_FORMATS } from './feed/labels.js'
 import { buttonClass, inputClass } from './profile/Card.jsx'
 
@@ -89,7 +90,8 @@ function PreferencesForm({ initial }) {
     setSaved(false)
   }
   const save = useMutation({
-    mutationFn: () => api('/me/preferences', { method: 'PUT', body: JSON.stringify(toBody(form)) }),
+    mutationFn: (body) => api('/me/preferences', { method: 'PUT', body: JSON.stringify(body) }),
+    ...optimistic(queryClient, ['preferences'], (_old, body) => body),
     onSuccess: (p) => {
       queryClient.setQueryData(['preferences'], p)
       setForm(toForm(p))
@@ -102,7 +104,7 @@ function PreferencesForm({ initial }) {
     <form
       onSubmit={(e) => {
         e.preventDefault()
-        save.mutate()
+        save.mutate(toBody(form))
       }}
       className="flex flex-col gap-4"
     >
