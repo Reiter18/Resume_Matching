@@ -14,6 +14,7 @@ class Settings(BaseSettings):
     breaker_cooldown_seconds: int = 3600
     cors_origins: list[str] = ["http://localhost:5173"]
     app_env: str = "dev"
+    log_level: str = "INFO"
     jwt_secret: str = "dev-insecure-secret-change-me"
     jwt_algorithm: str = "HS256"
     access_token_minutes: int = 60
