@@ -45,7 +45,23 @@ cd backend && ruff check . && pytest -q
 cd frontend && npm run lint && npm test && npm run build
 ```
 
-GitHub Actions (`.github/workflows/ci.yml`) запускает то же самое при каждом push и Pull Request: бэкенд с Postgres и Redis, фронтенд отдельным заданием.
+GitHub Actions (`.github/workflows/ci.yml`) запускает то же самое при каждом push и Pull Request: бэкенд с Postgres и Redis, фронтенд отдельным заданием. Третье задание, `docker`, собирает продакшен-образы, чтобы сломанный Dockerfile ловился до деплоя. Автоматической выкладки на сервер пока нет.
+
+## Деплой и мониторинг
+
+Два окружения: `docker-compose.yml` для разработки (код монтируется, `--reload`, порты наружу) и `docker-compose.prod.yml` для сервера.
+
+```bash
+cp .env.prod.example .env
+docker compose -f docker-compose.prod.yml up -d --build
+```
+
+- Наружу открыт только `web` (nginx, порт 80): отдаёт собранный фронтенд и проксирует `/api/` в API. БД, Redis и API снаружи недоступны. HTTPS ставится перед ним отдельно (Caddy, Traefik или certbot).
+- `api` при старте применяет миграции и словарь навыков, `worker` и `beat` ждут, пока он станет healthy. Все сервисы с `restart: unless-stopped`, бэкенд работает не от root.
+- За nginx API берёт реальный IP пользователя из `X-Forwarded-For`. Без этого ограничение попыток входа по IP считало бы всех одним клиентом.
+- Обновление: `git pull && docker compose -f docker-compose.prod.yml up -d --build`.
+- **Логи:** `docker compose -f docker-compose.prod.yml logs -f api worker`, уровень в `LOG_LEVEL` (по умолчанию INFO).
+- **Мониторинг:** `GET /health` (БД и Redis, по нему же healthcheck контейнера `api`), `GET /sources` (состояние источников) и `GET /metrics` в формате Prometheus: `jobmatch_up{component}`, `jobmatch_vacancies_total`, `jobmatch_users_total`, `jobmatch_source_consecutive_failures{source}`, `jobmatch_source_last_success_age_seconds{source}`. Через nginx `/api/metrics` закрыт (404), Prometheus должен ходить в `api:8000/metrics` по внутренней сети. Что стоит алертить: `jobmatch_up == 0`, `jobmatch_source_last_success_age_seconds > 7200`, рост `jobmatch_source_consecutive_failures`.
 
 ## API
 
