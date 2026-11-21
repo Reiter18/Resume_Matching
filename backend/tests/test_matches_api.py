@@ -41,7 +41,7 @@ def titles(client, h):
 
 def test_matches_ranked_filtered_by_must_have_and_need_resume(client):
     h = login_headers(client)
-    assert client.get("/matches", headers=h).status_code == 404  
+    assert client.get("/matches", headers=h).status_code == 404 
     assert client.get("/matches").status_code == 401
 
     client.post("/resumes/text", json={"text": "Backend developer. Python, Docker."}, headers=h)
@@ -72,7 +72,7 @@ def test_single_match_hidden_flag_and_pending(client, db):
 
 
 def test_pipeline_recomputes_only_new_and_changed(client, db):
-    client.post("/resumes/text", json={"text": "Python, Docker."}, headers=login_headers(client))
+    client.post("/resumes/text", json={"text": "Backend developer. Python, Docker."}, headers=login_headers(client))
     resume = db.scalar(select(Resume))
     assert match_resume(db, resume, only_new=True) == 0  
 
@@ -86,7 +86,7 @@ def test_pipeline_recomputes_only_new_and_changed(client, db):
     db.scalar(select(Vacancy).where(Vacancy.title == "A")).fetched_at = datetime.now(timezone.utc) + timedelta(minutes=1)
     db.commit()
     assert match_resume(db, resume, only_new=True) == 1  
-    assert match_resume(db, resume) == 4  
+    assert match_resume(db, resume) == 4 
 
 
 def test_enqueue_does_not_raise_when_broker_is_down(monkeypatch):
