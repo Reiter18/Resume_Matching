@@ -28,14 +28,14 @@ def variants():
 
 
 def auc(scores, labels):
-    pos = [s for s, y in zip(scores, labels) if y]
-    neg = [s for s, y in zip(scores, labels) if not y]
+    pos = [s for s, y in zip(scores, labels, strict=True) if y]
+    neg = [s for s, y in zip(scores, labels, strict=True) if not y]
     pairs = [(p > n) + 0.5 * (p == n) for p in pos for n in neg]
     return sum(pairs) / len(pairs) if pairs else None
 
 
 def precision_at(scores, labels, k=3):
-    top = sorted(zip(scores, labels), key=lambda x: (-x[0], x[1]))[:k] 
+    top = sorted(zip(scores, labels, strict=True), key=lambda x: (-x[0], x[1]))[:k]  
     return sum(y for _, y in top) / len(top)
 
 
