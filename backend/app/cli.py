@@ -8,6 +8,7 @@ from app.db import SessionLocal
 from app.dedup import dedup_all
 from app.extract import SkillExtractor, resume_experience, vacancy_params
 from app.ingestion import run_source
+from app.matching import match_all
 from app.models import Resume, Vacancy
 from app.skills import SkillDictionary, seed_skills
 
@@ -37,6 +38,7 @@ def main(argv: list[str]) -> None:
     sub.add_parser("dedup")
     sub.add_parser("seed-skills")
     sub.add_parser("extract")
+    sub.add_parser("match")
     args = parser.parse_args(argv)
 
     with SessionLocal() as session:
@@ -47,6 +49,8 @@ def main(argv: list[str]) -> None:
             print(f"проверено: {stats.checked}, найдено дублей: {stats.duplicates}")
         elif args.command == "extract":
             print("вакансий: {}, резюме: {}".format(*extract_all(session)))
+        elif args.command == "match":
+            print(f"оценок посчитано: {match_all(session, only_new=False)}")
         elif args.command == "seed-skills":
             skills, aliases = seed_skills(session)
             print(f"навыков: {skills}, синонимов: {aliases}")

@@ -187,11 +187,14 @@ class CriterionOut(BaseModel):
 class MatchOut(BaseModel):
     vacancy: VacancyOut
     score: Optional[int]  
+    confidence: Optional[int] = None
+    hidden: bool = False
     criteria: dict[str, CriterionOut]
 
 
 class MatchPage(BaseModel):
     items: list[MatchOut]
+    pending: bool = False
     total: int
     limit: int
     offset: int

@@ -20,7 +20,12 @@ class _Transient(Exception):
 
 
 def html_to_text(html: str) -> str:
-    return " ".join(BeautifulSoup(html or "", "html.parser").get_text(" ").split())
+    text = html or ""
+    for _ in range(2):  
+        text = " ".join(BeautifulSoup(text, "html.parser").get_text(" ").split())
+        if "<" not in text:
+            break
+    return text
 
 
 class ArbeitnowConnector(BaseConnector):

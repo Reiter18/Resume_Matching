@@ -15,11 +15,14 @@ celery_app.conf.update(
     task_default_queue="default",
     task_routes={"app.tasks.ingest_source": {"queue": "ingest"}, "app.tasks.dedup_vacancies": {"queue": "default"}},
     beat_schedule={
-        f"ingest-{name}": {
-            "task": "app.tasks.ingest_source",
-            "schedule": settings.ingest_interval_seconds,
-            "args": [name],
-        }
-        for name in REGISTRY
+        **{
+            f"ingest-{name}": {
+                "task": "app.tasks.ingest_source",
+                "schedule": settings.ingest_interval_seconds,
+                "args": [name],
+            }
+            for name in REGISTRY
+        },
+        "match-new": {"task": "app.tasks.match_new", "schedule": settings.ingest_interval_seconds},  
     },
 )
