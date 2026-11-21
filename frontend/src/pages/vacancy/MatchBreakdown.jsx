@@ -21,14 +21,15 @@ function Chips({ title, items, className }) {
   )
 }
 
-export default function MatchBreakdown({ score, criteria }) {
+export default function MatchBreakdown({ score, confidence, criteria }) {
   const rows = Object.entries(criteria).sort((a, b) => b[1].weight - a[1].weight)
   const known = rows.filter(([, c]) => c.score !== null).length
   return (
     <section aria-label="Разбор оценки" className="rounded-lg border border-slate-200 bg-white p-4">
       <h2 className="text-lg font-semibold">{score == null ? 'Оценка недоступна' : `Почему ${score}%`}</h2>
       <p className="mb-4 text-xs text-slate-500">
-        Посчитано по {known} из {rows.length} критериев. Чем больше вес, тем важнее критерий.
+        Данные есть по {known} из {rows.length} критериев.
+        {confidence != null && confidence < 100 && ` Они составляют ${confidence}% важного для вас, поэтому итог снижен.`} Чем больше вес, тем важнее критерий.
       </p>
       <ul className="flex flex-col gap-4">
         {rows.map(([key, c]) => {

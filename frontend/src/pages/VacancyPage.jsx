@@ -55,7 +55,7 @@ export default function VacancyPage() {
             {match.isSuccess && (
               <>
                 {match.data.hidden && <p className="mb-3 rounded-md bg-amber-50 p-3 text-xs text-amber-800">В ленте скрыта: не подходит под ваши обязательные критерии.</p>}
-                <MatchBreakdown score={match.data.score} criteria={match.data.criteria} />
+                <MatchBreakdown score={match.data.score} confidence={match.data.confidence} criteria={match.data.criteria} />
               </>
             )}
             {match.isError && (
