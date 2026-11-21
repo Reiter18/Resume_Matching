@@ -29,7 +29,7 @@ const setup = (match) =>
   })
 
 it('показывает вакансию и разбор оценки по критериям', async () => {
-  setup({ status: 200, body: { vacancy: detail, score: 56, hidden: false, criteria } })
+  setup({ status: 200, body: { vacancy: detail, score: 56, confidence: 80, hidden: false, criteria } })
   renderApp('/vacancies/5')
   expect(await screen.findByRole('heading', { name: 'Python Backend' })).toBeInTheDocument()
   expect(screen.getByText(/Пишем бэкенд/)).toBeInTheDocument()
@@ -37,7 +37,8 @@ it('показывает вакансию и разбор оценки по кр
   expect(screen.getByRole('link', { name: 'other' })).toHaveAttribute('href', 'https://other.example/5')
 
   expect(await screen.findByRole('heading', { name: 'Почему 56%' })).toBeInTheDocument()
-  expect(screen.getByText(/Посчитано по 2 из 3 критериев/)).toBeInTheDocument()
+  expect(screen.getByText(/Данные есть по 2 из 3 критериев/)).toBeInTheDocument()
+  expect(screen.getByText(/80% важного для вас, поэтому итог снижен/)).toBeInTheDocument()
   expect(screen.getByRole('progressbar', { name: 'Навыки' })).toHaveAttribute('aria-valuenow', '59')
   expect(screen.getByText('Не хватает:')).toBeInTheDocument()
   expect(screen.getByText('kubernetes', { selector: 'span' })).toBeInTheDocument() 
