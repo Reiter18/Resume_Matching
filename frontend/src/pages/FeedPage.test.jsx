@@ -22,7 +22,7 @@ const urls = (fetchMock) => fetchMock.mock.calls.map(([url]) => url).filter((u) 
 
 it('рисует только видимые строки и подгружает следующую страницу при прокрутке', async () => {
   const fetchMock = mockApi(base({ 'GET /vacancies?limit=20&offset=0': page(0, 20, 45), 'GET /vacancies?limit=20&offset=20': page(20, 20, 45) }))
-  renderApp('/')
+  renderApp('/?show=all')
   expect(await screen.findByText('Вакансия 1')).toBeInTheDocument()
   expect(screen.getByText('Найдено: 45')).toBeInTheDocument()
   expect(screen.getAllByRole('article').length).toBeLessThan(20) 
@@ -37,7 +37,7 @@ it('рисует только видимые строки и подгружае�
 
 it('фильтр уходит на сервер после паузы в наборе, а не на каждую букву', async () => {
   const fetchMock = mockApi(base({ 'GET /vacancies?limit=20&offset=0': page(0, 2, 2), 'GET /vacancies?limit=20&offset=0&q=python': page(0, 1, 1) }))
-  renderApp('/')
+  renderApp('/?show=all')
   await screen.findByText('Вакансия 2')
   fireEvent.change(screen.getByLabelText('Поиск'), { target: { value: 'pyth' } })
   fireEvent.change(screen.getByLabelText('Поиск'), { target: { value: 'python' } })
@@ -48,11 +48,32 @@ it('фильтр уходит на сервер после паузы в наб�
 
 it('показывает пустой результат и ошибку сервера', async () => {
   mockApi(base({ 'GET /vacancies?limit=20&offset=0': page(0, 0, 0) }))
-  renderApp('/')
+  renderApp('/?show=all')
   expect(await screen.findByText(/Ничего не найдено/)).toBeInTheDocument()
 
   cleanup()
   mockApi(base({ 'GET /vacancies?limit=20&offset=0': { status: 500, body: { detail: 'Сбой сервера' } } }))
-  renderApp('/')
+  renderApp('/?show=all')
   expect(await screen.findByRole('alert')).toHaveTextContent('Сбой сервера')
+})
+
+it('вкладка «Подходящие мне»: оценка в бейдже, подсказки при подсчёте и без резюме', async () => {
+  const match = { vacancy: vacancy(1), score: 85, hidden: false, criteria: {} }
+  const matches = (status, body) => base({ 'GET /matches?limit=20&offset=0': { status, body } })
+  mockApi(matches(200, { items: [match], total: 1, limit: 20, offset: 0, pending: false }))
+  renderApp('/')
+  expect(await screen.findByText('Вакансия 1')).toBeInTheDocument()
+  expect(screen.getByRole('link', { name: 'Оценка 85%, посмотреть разбор' })).toHaveAttribute('href', '/vacancies/1')
+
+  cleanup()
+  mockApi(matches(200, { items: [], total: 0, limit: 20, offset: 0, pending: true }))
+  renderApp('/')
+  expect(await screen.findByText(/Подбираем вакансии/)).toBeInTheDocument()
+  expect(screen.queryByText(/Подходящих вакансий пока нет/)).not.toBeInTheDocument()
+
+  cleanup()
+  mockApi(matches(404, { detail: 'Сначала загрузите резюме' }))
+  renderApp('/')
+  expect(await screen.findByRole('alert')).toHaveTextContent('Сначала загрузите резюме')
+  expect(screen.getByRole('link', { name: 'Загрузить резюме' })).toHaveAttribute('href', '/profile')
 })

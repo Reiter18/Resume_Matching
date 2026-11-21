@@ -1,15 +1,10 @@
 import { Link } from 'react-router-dom'
-import { EMPLOYMENT, SCHEDULES, WORK_FORMATS, formatSalary } from './labels.js'
+import { vacancyFacts } from './labels.js'
+
+const badge = (score) => (score >= 70 ? 'bg-green-100 text-green-800' : score >= 40 ? 'bg-amber-100 text-amber-800' : 'bg-slate-100 text-slate-600')
 
 export default function VacancyCard({ v }) {
-  const facts = [
-    formatSalary(v),
-    WORK_FORMATS[v.work_format],
-    ...v.employment_types.map((t) => EMPLOYMENT[t] || t),
-    SCHEDULES[v.schedule],
-    v.hours_per_week && `${v.hours_per_week} ч/нед`,
-    v.experience_years_min != null && `опыт от ${v.experience_years_min} лет`,
-  ].filter(Boolean)
+  const facts = vacancyFacts(v)
 
   return (
     <article className="h-full overflow-hidden rounded-lg border border-slate-200 bg-white p-3 text-sm">
@@ -17,7 +12,14 @@ export default function VacancyCard({ v }) {
         <Link to={`/vacancies/${v.id}`} className="truncate font-semibold text-blue-700">
           {v.title}
         </Link>
-        <span className="shrink-0 text-xs text-slate-400">{new Date(v.published_at).toLocaleDateString('ru-RU')}</span>
+        <div className="flex shrink-0 items-center gap-2 text-xs text-slate-400">
+          {v.score != null && (
+            <Link to={`/vacancies/${v.id}`} aria-label={`Оценка ${v.score}%, посмотреть разбор`} className={`rounded-full px-2 py-0.5 font-semibold ${badge(v.score)}`}>
+              {v.score}%
+            </Link>
+          )}
+          {new Date(v.published_at).toLocaleDateString('ru-RU')}
+        </div>
       </div>
       <p className="truncate text-slate-600">{[v.company, v.location].filter(Boolean).join(' · ')}</p>
       <p className="mt-1 truncate text-xs text-slate-500">{facts.join(' · ') || 'Параметры не указаны'}</p>
