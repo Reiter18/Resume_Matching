@@ -123,15 +123,16 @@ class VacancyMatch(Base):
     __tablename__ = "vacancy_matches"
     __table_args__ = (
         UniqueConstraint("resume_id", "vacancy_id", name="uq_match_resume_vacancy"),
-        Index("ix_matches_resume_score", "resume_id", "score"),
+        Index("ix_matches_resume_visible_score", "resume_id", "hidden", "score"),
     )
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     resume_id: Mapped[int] = mapped_column(ForeignKey("resumes.id", ondelete="CASCADE"))
     vacancy_id: Mapped[int] = mapped_column(ForeignKey("vacancies.id", ondelete="CASCADE"))
-    score: Mapped[float] = mapped_column(Float)  # 0..1
+    score: Mapped[Optional[float]] = mapped_column(Float)  
+    hidden: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("false"))  
     explanation: Mapped[Optional[dict]] = mapped_column(JSONB)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())  
 
 
 class SearchPreferences(Base):

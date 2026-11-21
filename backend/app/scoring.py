@@ -97,7 +97,7 @@ def _status(score):
     return "unknown" if score is None else "match" if score >= 1 else "mismatch" if score <= 0 else "partial"
 
 
-def score_vacancy(resume, prefs, v, weights: dict) -> dict:
+def score_vacancy(resume, prefs, v, weights: dict, criteria_weights: dict = WEIGHTS) -> dict:
     checks = {
         "skills": _skills(resume, v, weights), "work_format": _work_format(prefs, v), "salary": _salary(prefs, v),
         "location": _location(prefs, v), "employment_type": _employment(prefs, v), "schedule": _schedule(prefs, v),
@@ -105,9 +105,17 @@ def score_vacancy(resume, prefs, v, weights: dict) -> dict:
     }  # fmt: skip
     criteria = {}
     for key, (score, text, *extra) in checks.items():
-        criteria[key] = dict(score=score, weight=WEIGHTS[key], status=_status(score), text=text, **(extra[0] if extra else {}))
+        criteria[key] = dict(score=score, weight=criteria_weights[key], status=_status(score), text=text, **(extra[0] if extra else {}))
     used = [c for c in criteria.values() if c["score"] is not None]
-    total = sum(c["weight"] for c in used)
+    known = sum(c["weight"] for c in used)
+    applicable = {
+        "skills": True, "work_format": bool(prefs.work_formats), "salary": bool(prefs.min_salary),
+        "location": bool(prefs.locations) and v.work_format != "remote", "employment_type": bool(prefs.employment_types),
+        "schedule": bool(prefs.schedules), "hours": bool(prefs.min_hours_per_week or prefs.max_hours_per_week),
+        "experience": resume.experience_years is not None,
+    }  # fmt: skip
+    possible = sum(criteria_weights[k] for k, ok in applicable.items() if ok)
     hidden = any(criteria[k]["status"] in ("partial", "mismatch") for k in prefs.must_have if k in criteria)
-    score = sum(c["score"] * c["weight"] for c in used) / total if total else None
-    return {"score": None if score is None else round(score, 4), "hidden": hidden, "criteria": criteria}
+    score = sum(c["score"] * c["weight"] for c in used) / possible if used and possible else None
+    confidence = known / possible if possible else 0.0  
+    return {"score": None if score is None else round(score, 4), "confidence": round(confidence, 4), "hidden": hidden, "criteria": criteria}

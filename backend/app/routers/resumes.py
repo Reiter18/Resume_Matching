@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile, status
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
+from app import tasks
 from app.config import settings
 from app.deps import get_current_user, get_db
 from app.extract import SkillExtractor, resume_experience
@@ -32,6 +33,7 @@ def _replace_resume(db: Session, user: User, filename: str, text: str) -> Resume
     db.add(resume)
     db.commit()
     db.refresh(resume)
+    tasks.enqueue_match(resume.id)
     return resume
 
 
@@ -75,6 +77,7 @@ def update_skills(body: ResumeSkillsIn, db: Session = Depends(get_db), user: Use
     resume.skills, _ = SkillDictionary.load(db).normalize(body.skills)
     db.commit()
     db.refresh(resume)
+    tasks.enqueue_match(resume.id)
     return _out(resume, db)
 
 

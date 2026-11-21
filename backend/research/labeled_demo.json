@@ -1,0 +1,397 @@
+{
+ "demo": true,
+ "_note": "ДЕМО-данные для проверки скрипта: составлены вручную и ничего не доказывают. Для ресерча разметьте реальные вакансии (export).",
+ "profiles": [
+  {
+   "name": "Backend, хочет удалёнку от 4000 EUR",
+   "resume": {
+    "skills": [
+     "python",
+     "django",
+     "postgresql",
+     "docker",
+     "git"
+    ],
+    "experience_years": 3
+   },
+   "prefs": {
+    "work_formats": [
+     "remote"
+    ],
+    "min_salary": 4000,
+    "salary_currency": "EUR",
+    "must_have": [
+     "work_format"
+    ]
+   },
+   "vacancies": [
+    {
+     "title": "Python Backend",
+     "label": 1,
+     "skills": [
+      "python",
+      "django",
+      "postgresql",
+      "docker"
+     ],
+     "work_format": "remote",
+     "salary_min": 4500,
+     "salary_max": 5500,
+     "salary_currency": "EUR"
+    },
+    {
+     "title": "Python Developer, офис",
+     "label": 0,
+     "skills": [
+      "python",
+      "django",
+      "postgresql"
+     ],
+     "work_format": "onsite",
+     "location": "Berlin",
+     "salary_min": 5000,
+     "salary_max": 5500,
+     "salary_currency": "EUR"
+    },
+    {
+     "title": "Java Developer",
+     "label": 0,
+     "skills": [
+      "java",
+      "spring",
+      "postgresql"
+     ],
+     "work_format": "remote",
+     "salary_min": 4500,
+     "salary_max": 5000,
+     "salary_currency": "EUR"
+    },
+    {
+     "title": "Python Backend, гибрид",
+     "label": 0,
+     "skills": [
+      "python",
+      "fastapi",
+      "docker"
+     ],
+     "work_format": "hybrid",
+     "salary_min": 4500,
+     "salary_max": 5000,
+     "salary_currency": "EUR"
+    },
+    {
+     "title": "Junior DevOps",
+     "label": 0,
+     "skills": [
+      "docker",
+      "kubernetes",
+      "linux"
+     ],
+     "work_format": "remote",
+     "salary_min": 3000,
+     "salary_max": 3500,
+     "salary_currency": "EUR"
+    },
+    {
+     "title": "Django Developer",
+     "label": 1,
+     "skills": [
+      "python",
+      "django"
+     ],
+     "work_format": "remote",
+     "salary_min": 4200,
+     "salary_max": 4800,
+     "salary_currency": "EUR"
+    },
+    {
+     "title": "Data Engineer",
+     "label": 1,
+     "skills": [
+      "python",
+      "postgresql",
+      "spark"
+     ],
+     "work_format": "remote",
+     "salary_min": 5000,
+     "salary_max": 6000,
+     "salary_currency": "EUR"
+    },
+    {
+     "title": "Python Backend, низкая оплата",
+     "label": 0,
+     "skills": [
+      "python",
+      "django",
+      "docker"
+     ],
+     "work_format": "remote",
+     "salary_min": 1800,
+     "salary_max": 2200,
+     "salary_currency": "EUR"
+    }
+   ]
+  },
+  {
+   "name": "Frontend, гибрид в Берлине",
+   "resume": {
+    "skills": [
+     "javascript",
+     "react",
+     "typescript",
+     "css",
+     "git"
+    ],
+    "experience_years": 2
+   },
+   "prefs": {
+    "work_formats": [
+     "hybrid"
+    ],
+    "locations": [
+     "Berlin"
+    ],
+    "employment_types": [
+     "full_time"
+    ]
+   },
+   "vacancies": [
+    {
+     "title": "React Developer",
+     "label": 1,
+     "skills": [
+      "react",
+      "typescript",
+      "javascript"
+     ],
+     "work_format": "hybrid",
+     "location": "Berlin",
+     "employment_types": [
+      "full_time"
+     ],
+     "experience_years_min": 2
+    },
+    {
+     "title": "React Developer, Мюнхен",
+     "label": 0,
+     "skills": [
+      "react",
+      "typescript"
+     ],
+     "work_format": "onsite",
+     "location": "Munich",
+     "employment_types": [
+      "full_time"
+     ]
+    },
+    {
+     "title": "Vue Developer",
+     "label": 0,
+     "skills": [
+      "vue",
+      "javascript",
+      "css"
+     ],
+     "work_format": "hybrid",
+     "location": "Berlin",
+     "employment_types": [
+      "full_time"
+     ]
+    },
+    {
+     "title": "Frontend (React), удалённо",
+     "label": 1,
+     "skills": [
+      "react",
+      "javascript",
+      "css"
+     ],
+     "work_format": "remote",
+     "employment_types": [
+      "full_time"
+     ]
+    },
+    {
+     "title": "Senior React",
+     "label": 0,
+     "skills": [
+      "react",
+      "typescript",
+      "graphql",
+      "aws"
+     ],
+     "work_format": "hybrid",
+     "location": "Berlin",
+     "employment_types": [
+      "full_time"
+     ],
+     "experience_years_min": 8
+    },
+    {
+     "title": "React, подработка",
+     "label": 0,
+     "skills": [
+      "react",
+      "javascript"
+     ],
+     "work_format": "hybrid",
+     "location": "Berlin",
+     "employment_types": [
+      "part_time"
+     ]
+    },
+    {
+     "title": "TypeScript Developer",
+     "label": 1,
+     "skills": [
+      "typescript",
+      "react",
+      "git"
+     ],
+     "work_format": "hybrid",
+     "location": "Berlin",
+     "employment_types": [
+      "full_time"
+     ],
+     "experience_years_min": 1
+    },
+    {
+     "title": "Backend на Go",
+     "label": 0,
+     "skills": [
+      "go",
+      "postgresql",
+      "docker"
+     ],
+     "work_format": "hybrid",
+     "location": "Berlin",
+     "employment_types": [
+      "full_time"
+     ]
+    }
+   ]
+  },
+  {
+   "name": "Джуниор, 20-30 часов в неделю",
+   "resume": {
+    "skills": [
+     "python",
+     "sql"
+    ],
+    "experience_years": 0.5
+   },
+   "prefs": {
+    "employment_types": [
+     "part_time"
+    ],
+    "min_hours_per_week": 20,
+    "max_hours_per_week": 30,
+    "must_have": [
+     "hours"
+    ]
+   },
+   "vacancies": [
+    {
+     "title": "Junior Python, 25 ч",
+     "label": 1,
+     "skills": [
+      "python",
+      "sql"
+     ],
+     "employment_types": [
+      "part_time"
+     ],
+     "hours_per_week": 25,
+     "experience_years_min": 0
+    },
+    {
+     "title": "Python, 40 ч",
+     "label": 0,
+     "skills": [
+      "python",
+      "sql",
+      "django"
+     ],
+     "employment_types": [
+      "full_time"
+     ],
+     "hours_per_week": 40
+    },
+    {
+     "title": "Data Analyst, 20 ч",
+     "label": 1,
+     "skills": [
+      "sql",
+      "python"
+     ],
+     "employment_types": [
+      "part_time"
+     ],
+     "hours_per_week": 20
+    },
+    {
+     "title": "Senior Python, 30 ч",
+     "label": 0,
+     "skills": [
+      "python",
+      "sql",
+      "aws",
+      "kubernetes"
+     ],
+     "employment_types": [
+      "part_time"
+     ],
+     "hours_per_week": 30,
+     "experience_years_min": 6
+    },
+    {
+     "title": "SQL Developer, 10 ч",
+     "label": 0,
+     "skills": [
+      "sql"
+     ],
+     "employment_types": [
+      "part_time"
+     ],
+     "hours_per_week": 10
+    },
+    {
+     "title": "Python Intern",
+     "label": 1,
+     "skills": [
+      "python"
+     ],
+     "employment_types": [
+      "part_time",
+      "internship"
+     ],
+     "hours_per_week": 28,
+     "experience_years_min": 0
+    },
+    {
+     "title": "Java Junior, 25 ч",
+     "label": 0,
+     "skills": [
+      "java",
+      "sql"
+     ],
+     "employment_types": [
+      "part_time"
+     ],
+     "hours_per_week": 25
+    },
+    {
+     "title": "Python Developer",
+     "label": 1,
+     "skills": [
+      "python",
+      "sql"
+     ],
+     "employment_types": [
+      "part_time"
+     ]
+    }
+   ]
+  }
+ ]
+}

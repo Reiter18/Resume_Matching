@@ -5,6 +5,7 @@ import httpx
 import pytest
 
 from app.connectors import ArbeitnowConnector, SourceUnavailable
+from app.connectors.arbeitnow import html_to_text
 
 FIXTURE = json.loads((Path(__file__).parent / "fixtures" / "arbeitnow_page1.json").read_text())
 
@@ -86,3 +87,10 @@ def test_follows_redirects():
         return httpx.Response(200, json=FIXTURE)
 
     assert len(list(make(handler).fetch())) == 2
+
+
+def test_html_to_text_handles_double_escaped_html():
+    escaped = "&lt;div class=&quot;x&quot;&gt;&lt;p&gt;Senior &amp;amp; Co&lt;/p&gt;&lt;ul&gt;&lt;li&gt;FastAPI&lt;/li&gt;&lt;/ul&gt;&lt;/div&gt;"
+    assert html_to_text(escaped) == "Senior & Co FastAPI"
+    assert html_to_text("<p>We use <b>FastAPI</b></p><p>Docker</p>") == "We use FastAPI Docker"
+    assert html_to_text("Salary < 5000 EUR") == "Salary < 5000 EUR" 
