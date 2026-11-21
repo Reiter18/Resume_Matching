@@ -6,6 +6,7 @@ import LoginPage from './pages/LoginPage.jsx'
 import Placeholder from './pages/Placeholder.jsx'
 import PreferencesPage from './pages/PreferencesPage.jsx'
 import ProfilePage from './pages/ProfilePage.jsx'
+import VacancyPage from './pages/VacancyPage.jsx'
 
 export default function App() {
   return (
@@ -16,7 +17,7 @@ export default function App() {
       <Route element={<ProtectedRoute />}>
         <Route element={<Layout />}>
           <Route index element={<FeedPage />} />
-          <Route path="vacancies/:id" element={<Placeholder title="Вакансия и разбор оценки" week={8} />} />
+          <Route path="vacancies/:id" element={<VacancyPage />} />
           <Route path="profile" element={<ProfilePage />} />
           <Route path="preferences" element={<PreferencesPage />} />
           <Route path="notifications" element={<Placeholder title="Уведомления" week={10} />} />

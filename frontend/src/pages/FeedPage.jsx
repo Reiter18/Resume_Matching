@@ -1,50 +1,58 @@
 import { useState } from 'react'
-import { keepPreviousData, useInfiniteQuery } from '@tanstack/react-query'
-import { api } from '../api/client.js'
+import { useSearchParams } from 'react-router-dom'
 import { useDebouncedValue } from '../hooks/useDebouncedValue.js'
+import FeedList from './feed/FeedList.jsx'
 import Filters, { EMPTY } from './feed/Filters.jsx'
-import VacancyList from './feed/VacancyList.jsx'
+import { inputClass } from './profile/Card.jsx'
 
-const PAGE = 20
+const MIN_SCORES = [['', 'Любая оценка'], ['50', 'от 50%'], ['70', 'от 70%'], ['85', 'от 85%']]
 
-function queryString(filters, offset) {
-  const params = new URLSearchParams({ limit: PAGE, offset })
-  for (const [key, value] of Object.entries(filters)) if (value) params.set(key, value)
-  return params.toString()
+function AllVacancies() {
+  const [filters, setFilters] = useState(EMPTY)
+  const applied = JSON.parse(useDebouncedValue(JSON.stringify(filters), 300)) 
+  return (
+    <>
+      <Filters value={filters} onChange={setFilters} />
+      <FeedList path="/vacancies" filters={applied} emptyText="Ничего не найдено. Измените фильтры." />
+    </>
+  )
+}
+
+function BestMatches() {
+  const [minScore, setMinScore] = useState('')
+  return (
+    <>
+      <label className="mb-4 flex w-48 flex-col gap-1 text-xs text-slate-500">
+        Оценка
+        <select value={minScore} onChange={(e) => setMinScore(e.target.value)} className={inputClass}>
+          {MIN_SCORES.map(([value, label]) => (
+            <option key={value} value={value}>
+              {label}
+            </option>
+          ))}
+        </select>
+      </label>
+      <FeedList path="/matches" filters={{ min_score: minScore }} emptyText="Подходящих вакансий пока нет. Попробуйте смягчить обязательные критерии в «Предпочтениях»." />
+    </>
+  )
 }
 
 export default function FeedPage() {
-  const [filters, setFilters] = useState(EMPTY)
-  const applied = JSON.parse(useDebouncedValue(JSON.stringify(filters), 300)) 
-
-  const feed = useInfiniteQuery({
-    queryKey: ['vacancies', applied],
-    queryFn: ({ pageParam }) => api(`/vacancies?${queryString(applied, pageParam)}`),
-    initialPageParam: 0,
-    placeholderData: keepPreviousData, 
-    getNextPageParam: (last) => (last.offset + last.items.length < last.total ? last.offset + last.limit : undefined),
-  })
-
-  const pages = feed.data?.pages ?? []
-  const items = [...new Map(pages.flatMap((p) => p.items).map((v) => [v.id, v])).values()] 
-
+  const [params, setParams] = useSearchParams()
+  const all = params.get('show') === 'all'
+  const tab = (active) => `rounded-md px-3 py-1.5 text-sm ${active ? 'bg-blue-600 text-white' : 'border border-slate-300 bg-white text-slate-700'}`
   return (
     <div>
       <h1 className="mb-4 text-xl font-semibold">Лента вакансий</h1>
-      <Filters value={filters} onChange={setFilters} />
-      {feed.isPending && <p className="text-sm text-slate-500">Загрузка…</p>}
-      {feed.isError && (
-        <p role="alert" className="text-sm text-red-600">
-          {feed.error.message}
-        </p>
-      )}
-      {feed.isSuccess && !feed.isPlaceholderData && items.length === 0 && <p className="text-sm text-slate-500">Ничего не найдено. Измените фильтры.</p>}
-      {items.length > 0 && (
-        <div className={feed.isPlaceholderData ? 'opacity-50' : undefined}>
-          <p className="mb-2 text-xs text-slate-500">Найдено: {pages[0].total}</p>
-          <VacancyList key={JSON.stringify(applied)} items={items} hasMore={feed.hasNextPage} loading={feed.isFetching} onMore={feed.fetchNextPage} />
-        </div>
-      )}
+      <div role="tablist" className="mb-4 flex gap-2">
+        <button role="tab" aria-selected={!all} onClick={() => setParams({})} className={tab(!all)}>
+          Подходящие мне
+        </button>
+        <button role="tab" aria-selected={all} onClick={() => setParams({ show: 'all' })} className={tab(all)}>
+          Все вакансии
+        </button>
+      </div>
+      {all ? <AllVacancies /> : <BestMatches />}
     </div>
   )
 }
