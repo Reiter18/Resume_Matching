@@ -1,5 +1,11 @@
 import { CRITERIA } from '../feed/labels.js'
 
+const SUMMARY = [
+  ['matches', 'Подходит', 'text-green-700'],
+  ['gaps', 'Чего не хватает', 'text-red-700'],
+  ['unknown', 'Нельзя проверить', 'text-slate-500'],
+]
+
 const STATUS = {
   match: { label: 'совпало', bar: 'bg-green-500', text: 'text-green-700' },
   partial: { label: 'частично', bar: 'bg-amber-500', text: 'text-amber-700' },
@@ -21,7 +27,7 @@ function Chips({ title, items, className }) {
   )
 }
 
-export default function MatchBreakdown({ score, confidence, criteria }) {
+export default function MatchBreakdown({ score, confidence, summary, criteria }) {
   const rows = Object.entries(criteria).sort((a, b) => b[1].weight - a[1].weight)
   const known = rows.filter(([, c]) => c.score !== null).length
   return (
@@ -31,6 +37,16 @@ export default function MatchBreakdown({ score, confidence, criteria }) {
         Данные есть по {known} из {rows.length} критериев.
         {confidence != null && confidence < 100 && ` Они составляют ${confidence}% важного для вас, поэтому итог снижен.`} Чем больше вес, тем важнее критерий.
       </p>
+      {summary && (
+        <dl className="mb-4 flex flex-col gap-1 text-xs">
+          {SUMMARY.filter(([key]) => summary[key]?.length > 0).map(([key, title, color]) => (
+            <div key={key}>
+              <dt className={`inline font-semibold ${color}`}>{title}: </dt>
+              <dd className="inline text-slate-700">{summary[key].join('; ')}</dd>
+            </div>
+          ))}
+        </dl>
+      )}
       <ul className="flex flex-col gap-4">
         {rows.map(([key, c]) => {
           const st = STATUS[c.status]
