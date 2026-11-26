@@ -2,6 +2,7 @@ import { NavLink, Outlet } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { api } from '../api/client.js'
 import { useAuth } from '../auth/AuthContext.jsx'
+import Notifications from './Notifications.jsx'
 
 const links = [
   ['/', 'Лента'],
@@ -45,6 +46,7 @@ export default function Layout() {
       <main className="mx-auto max-w-5xl p-6">
         <Outlet />
       </main>
+      <Notifications />
     </div>
   )
 }

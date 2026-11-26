@@ -20,6 +20,9 @@ const criteria = {
   work_format: { score: 0.5, weight: 15, status: 'partial', text: 'гибрид: рядом с желаемым форматом' },
   salary: { score: null, weight: 15, status: 'unknown', text: 'зарплата в вакансии не указана' },
 }
+const summary = {
+  matches: ['навыки: python, docker'], gaps: ['не хватает навыков: kubernetes'], unknown: ['зарплата в вакансии не указана'],
+}  // prettier-ignore
 const setup = (match) =>
   mockApi({
     'GET /me': { status: 200, body: USER },
@@ -29,7 +32,7 @@ const setup = (match) =>
   })
 
 it('показывает вакансию и разбор оценки по критериям', async () => {
-  setup({ status: 200, body: { vacancy: detail, score: 56, confidence: 80, hidden: false, criteria } })
+  setup({ status: 200, body: { vacancy: detail, score: 56, confidence: 80, hidden: false, criteria, summary } })
   renderApp('/vacancies/5')
   expect(await screen.findByRole('heading', { name: 'Python Backend' })).toBeInTheDocument()
   expect(screen.getByText(/Пишем бэкенд/)).toBeInTheDocument()
@@ -41,8 +44,12 @@ it('показывает вакансию и разбор оценки по кр
   expect(screen.getByText(/80% важного для вас, поэтому итог снижен/)).toBeInTheDocument()
   expect(screen.getByRole('progressbar', { name: 'Навыки' })).toHaveAttribute('aria-valuenow', '59')
   expect(screen.getByText('Не хватает:')).toBeInTheDocument()
-  expect(screen.getByText('kubernetes', { selector: 'span' })).toBeInTheDocument() 
+  expect(screen.getByText('kubernetes', { selector: 'span' })).toBeInTheDocument() // красная метка среди навыков
   expect(screen.getByText('нет данных, вес 15')).toBeInTheDocument()
+  expect(screen.getByText('Подходит:')).toBeInTheDocument() // краткое объяснение сверху
+  expect(screen.getByText('навыки: python, docker')).toBeInTheDocument()
+  expect(screen.getByText('не хватает навыков: kubernetes')).toBeInTheDocument()
+  expect(screen.getByText('зарплата в вакансии не указана', { selector: 'dd' })).toBeInTheDocument()
 })
 
 it('сообщает, что вакансия скрыта обязательными критериями', async () => {
