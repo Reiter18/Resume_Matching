@@ -21,8 +21,9 @@ alembic upgrade head
 uvicorn app.main:app --reload
 celery -A app.celery_app worker -Q ingest,default -l info
 celery -A app.celery_app beat -l info
-python -m app.cli arbeitnow 1
 python -m app.cli seed-skills
+python -m app.cli arbeitnow 1
+python -m app.cli trudvsem 1
 python -m app.cli dedup
 python -m app.cli extract
 python -m app.cli match
@@ -48,6 +49,22 @@ cd frontend && npm run lint && npm test && npm run build
 ```
 
 GitHub Actions (`.github/workflows/ci.yml`) запускает то же самое при каждом push и Pull Request: бэкенд с Postgres и Redis, фронтенд отдельным заданием. Третье задание, `docker`, собирает продакшен-образы, чтобы сломанный Dockerfile ловился до деплоя. Автоматической выкладки на сервер пока нет.
+
+### E2E в Chromium
+
+Из корня проекта запустите API, базу, Redis, воркер и фронтенд. Дождитесь, пока `/api/health` на фронтенде вернёт `status: ok`, затем загрузите вакансии перед прогоном.
+
+```bash
+docker compose up -d --build
+docker compose exec api python -m app.cli trudvsem 1
+docker compose exec api python -m app.cli dedup
+cd frontend
+npm ci
+npx playwright install chromium
+npm run e2e
+```
+
+Playwright использует `http://localhost:5173`. Чтобы проверить другой адрес, задайте `E2E_BASE_URL` перед запуском. Для прогона используйте учебную базу: сценарии создают аккаунты и резюме. Если лента пуста, сценарий с разбором оценки пропускается. После загрузки резюме этот сценарий ждёт, пока воркер рассчитает оценку.
 
 ## Деплой и мониторинг
 
@@ -87,6 +104,9 @@ docker compose -f docker-compose.prod.yml up -d --build
 | `PUT /me/preferences`                   | сохранить предпочтения (полная замена; ошибка 422, если обязательный критерий без значения)                                      |
 | `GET /matches`                          | готовые оценки по убыванию: `min_score` (%), `limit`, `offset`; `pending: true`, пока оценки считаются; нужно резюме (иначе 404) |
 | `GET /matches/{vacancy_id}`             | оценка одной вакансии с разбором по критериям, в том числе скрытой обязательными критериями (404, если оценки ещё нет)           |
+| `GET /events`                           | поток SSE с обновлениями оценок текущего пользователя                                                                            |
+| `POST /shares`                          | создаёт ссылку и возвращает токен один раз                                                                                       |
+| `GET /shares`, `DELETE /shares/{id}`    | список своих ссылок и отзыв ссылки                                                                                               |
 | `GET /skills?q=`                        | подсказки по словарю навыков для поля ввода                                                                                      |
 | `POST /skills/normalize`                | приводит слова к каноническим именам: `Postgres` -> `postgresql`                                                                 |
 
@@ -176,6 +196,7 @@ sources — vacancies (source_id); users — search_preferences, share_links —
 Код: `app/scoring.py` (чистая функция `score_vacancy`, без БД), пайплайн `app/matching.py`, эндпоинты `/matches`.
 
 - В API скор в процентах (0..100), `null`, если сравнивать не с чем. У каждого критерия: `score` (0..1 или `null`), `weight`, `status`, `text` с пояснением; для навыков ещё `matched` и `missing`.
+- `summary.matches`, `summary.gaps` и `summary.unknown` объясняют, что совпало, чего не хватает и каких данных нет. У критерия `applicable: false` означает, что он неприменим к профилю пользователя. Для сохранённых ранее оценок выполните `docker compose exec api python -m app.cli match`.
 - Валюты не конвертируются: если валюта вакансии не совпала с желаемой, зарплата не учитывается.
 - Совпадение места: желаемый город входит в место вакансии без учёта регистра («Berlin» найдёт «Berlin, Germany»).
 
@@ -188,6 +209,10 @@ sources — vacancies (source_id); users — search_preferences, share_links —
 - **Идемпотентность:** запись через `INSERT ... ON CONFLICT DO UPDATE`, повторный или параллельный запуск безопасен.
 - **Если очередь недоступна:** запрос пользователя не падает, а `match_new` по расписанию (каждые `INGEST_INTERVAL_SECONDS`) догонит пропущенное. Пока оценок нет совсем, `GET /matches` отдаёт `pending: true`.
 - **После изменения весов или правил скоринга:** `python -m app.cli match` пересчитывает всё.
+
+### Обновления в реальном времени
+
+После сохранения оценок воркер публикует в Redis `matches_refreshed` или `new_matches`. Браузер слушает `GET /events` с токеном в заголовке Authorization и обновляет ленту и разбор оценки. В продакшене nginx проксирует `/api/events` без буферизации.
 
 ## Ресерч весов скоринга
 
@@ -203,20 +228,29 @@ python -m research.evaluate research/mine.json
 
 Сценарий: соискатель делится подборкой вакансий с ментором или карьерным центром, не открывая резюме и аккаунт.
 
-- Ссылка `/s/<токен>` работает без регистрации, только на чтение, подборка живая (обновляется при новых вакансиях).
 - Токен случайный (256 бит), в БД лежит только его **хеш** (`share_links.token_hash`); токен виден один раз при создании.
 - **Белый список полей** (`sharing.ALLOWED_FIELDS`): вакансии и оценки, разбор по критериям, навыки, зарплатные ожидания. Резюме, email и контакты открыть нельзя. Лишние поля в запросе отклоняются.
-- Параметры ссылки: что показывать, минимальный скор, срок действия, отзыв, счётчик просмотров.
-- Защита публичного эндпоинта: лимит запросов (Redis), `noindex`, одинаковый ответ на «нет такой ссылки» и «ссылка отозвана».
+- При создании можно задать заголовок, поля для показа, минимальный скор (0–100%) и срок (1–365 дней, по умолчанию 7). У пользователя может быть до 20 активных ссылок. Повторный отзыв сохраняет дату первого.
 
 ## Нормализация критериев
 
 Все источники приводятся к одному словарю значений: `work_format` (remote / hybrid / onsite / unknown), `employment_types`, `schedule`, `hours_per_week`, зарплата в месяц.
 Arbeitnow даёт только remote/не remote, поэтому hybrid определяется по словам в тексте, а график и часы обычно остаются пустыми (unknown).
-Богаче данные у Trudvsem (график, зарплата) — это одна из причин взять его вторым источником.
+«Работа России» также передаёт график, зарплату в рублях, требуемый опыт и часть навыков.
 
 ## Коннекторы
 
 `BaseConnector.fetch()` отдаёт `NormalizedVacancy`. Новый источник = один класс + строка в `REGISTRY`.
 Ретраи с экспоненциальной паузой на 5xx/429/таймауты, `SourceUnavailable` вместо падения,
 битая запись пропускается, сбой источника пишется в `sources`.
+
+- **Arbeitnow** (`arbeitnow`) — европейские вакансии.
+- **«Работа России»** (`trudvsem`) — [открытый API вакансий](https://opendata.trudvsem.ru/api/v1/vacancies?limit=1) без ключа. Коннектор ищет по запросам «python», «программист» и «разработчик». Число после имени источника задаёт максимум страниц на каждый запрос.
+
+Ручной сбор и пересчёт из корня проекта:
+
+```bash
+docker compose exec api python -m app.cli trudvsem 1
+docker compose exec api python -m app.cli dedup
+docker compose exec api python -m app.cli match
+```

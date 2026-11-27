@@ -32,16 +32,16 @@ def run(v, p=None, resume=RESUME):
 def test_skills_use_weights_and_list_matched_and_missing():
     m = run(vac(skills=["python", "java"]))
     c = m["criteria"]["skills"]
-    assert c["score"] == 0.75 and c["status"] == "partial"  
+    assert c["score"] == 0.75 and c["status"] == "partial"
     assert c["matched"] == ["python"] and c["missing"] == ["java"]
-    assert m["score"] == 0.75 and m["confidence"] == 1.0  
+    assert m["score"] == 0.75 and m["confidence"] == 1.0
 
 
 def test_score_is_weighted_over_applicable_criteria():
     m = run(vac(skills=["python"], work_format="hybrid"), prefs(work_formats=["remote"]))
     assert m["criteria"]["work_format"]["score"] == 0.5
     assert m["score"] == pytest.approx((40 * 1 + 15 * 0.5) / 55, abs=1e-4)
-    assert run(vac())["score"] is None  
+    assert run(vac())["score"] is None
 
 
 @pytest.mark.parametrize(
@@ -70,17 +70,30 @@ def test_missing_data_for_applicable_criteria_lowers_score():
     assert m["criteria"]["work_format"]["score"] == 1.0
     assert m["score"] == pytest.approx(15 / 55, abs=1e-4) and m["confidence"] == pytest.approx(15 / 55, abs=1e-4)
 
-    wish = prefs(min_salary=4000, salary_currency="EUR")  
+    wish = prefs(min_salary=4000, salary_currency="EUR")
     assert run(vac(skills=["python"]), wish)["score"] == pytest.approx(40 / 55, abs=1e-4)
-    assert run(vac(skills=["python"]))["score"] == 1.0  
+    assert run(vac(skills=["python"]))["score"] == 1.0
     remote = run(vac(skills=["python"], work_format="remote"), prefs(locations=["Berlin"]))
-    assert remote["score"] == 1.0  
+    assert remote["score"] == 1.0
 
 
 def test_must_have_hides_only_known_mismatch():
     p = prefs(work_formats=["remote"], must_have=["work_format"])
     assert run(vac(work_format="onsite"), p)["hidden"] is True
-    assert run(vac(work_format="hybrid"), p)["hidden"] is True 
-    assert run(vac(work_format="unknown"), p)["hidden"] is False  
+    assert run(vac(work_format="hybrid"), p)["hidden"] is True
+    assert run(vac(work_format="unknown"), p)["hidden"] is False
     assert run(vac(work_format="remote"), p)["hidden"] is False
-    assert run(vac(work_format="onsite"), prefs(work_formats=["remote"]))["hidden"] is False  
+    assert run(vac(work_format="onsite"), prefs(work_formats=["remote"]))["hidden"] is False
+
+
+def test_summary_only_reports_applicable_criteria():
+    result = run(
+        vac(skills=["python", "java"], work_format="remote", schedule="shift"),
+        prefs(locations=["Berlin"], min_salary=4000, salary_currency="EUR", schedules=["flexible"]),
+    )
+    assert result["criteria"]["location"]["applicable"] is False
+    assert result["summary"] == {
+        "matches": ["навыки: python"],
+        "gaps": ["не хватает навыков: java", "график не подходит"],
+        "unknown": ["зарплата в вакансии не указана"],
+    }

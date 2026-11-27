@@ -10,7 +10,7 @@ from sqlalchemy import func, select, text
 from app.config import settings
 from app.db import SessionLocal
 from app.models import Source, User, Vacancy
-from app.routers import account, auth, matches, preferences, resumes, skills, vacancies
+from app.routers import account, auth, events, matches, preferences, resumes, shares, skills, vacancies
 
 logging.basicConfig(level=settings.log_level.upper(), format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 
@@ -20,6 +20,8 @@ app.include_router(auth.router)
 app.include_router(account.router)
 app.include_router(preferences.router)
 app.include_router(matches.router)
+app.include_router(events.router)
+app.include_router(shares.router)
 app.include_router(vacancies.router)
 app.include_router(resumes.router)
 app.include_router(skills.router)
