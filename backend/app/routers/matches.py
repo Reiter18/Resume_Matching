@@ -20,10 +20,10 @@ def _my_resume(db: Session, user: User) -> Resume:
 def _match_out(v: Vacancy, m: VacancyMatch) -> MatchOut:
     score = None if m.score is None else round(m.score * 100)
     explanation = m.explanation or {}
-    confidence = explanation.get("confidence")  
+    confidence = explanation.get("confidence")
     return MatchOut(
         vacancy=VacancyOut(**_out(v)), score=score, confidence=None if confidence is None else round(confidence * 100),
-        hidden=m.hidden, criteria=explanation.get("criteria", {}),
+        hidden=m.hidden, criteria=explanation.get("criteria", {}), summary=explanation.get("summary"),
     )  # fmt: skip
 
 
@@ -53,7 +53,9 @@ def list_matches(
     ).all()
     pending = total == 0 and not db.scalar(select(exists().where(VacancyMatch.resume_id == resume.id)))
     pending = pending and bool(db.scalar(select(exists().where(Vacancy.canonical_id.is_(None)))))
-    return MatchPage(items=[_match_out(v, m) for m, v in rows], total=total, limit=limit, offset=offset, pending=pending)
+    return MatchPage(
+        items=[_match_out(v, m) for m, v in rows], total=total, limit=limit, offset=offset, pending=pending
+    )
 
 
 @router.get("/{vacancy_id}", response_model=MatchOut)
@@ -62,7 +64,11 @@ def get_match(vacancy_id: int, db: Session = Depends(get_db), user: User = Depen
     v = db.scalar(select(Vacancy).where(Vacancy.id == vacancy_id).options(joinedload(Vacancy.source)))
     if v is None:
         raise HTTPException(404, "Вакансия не найдена")
-    m = db.scalar(select(VacancyMatch).where(VacancyMatch.resume_id == resume.id, VacancyMatch.vacancy_id == (v.canonical_id or v.id)))
+    m = db.scalar(
+        select(VacancyMatch).where(
+            VacancyMatch.resume_id == resume.id, VacancyMatch.vacancy_id == (v.canonical_id or v.id)
+        )
+    )
     if m is None:
-        raise HTTPException(404, "Оценка ещё не готова")  
+        raise HTTPException(404, "Оценка ещё не готова")
     return _match_out(v, m)

@@ -4,6 +4,7 @@ from typing import Literal, Optional
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator, model_validator
 
 from app.schemas.vacancy import Schedule
+from app.sharing import validate_fields
 from app.skills import MAX_SKILL_LEN
 
 
@@ -71,8 +72,8 @@ class DuplicateOut(BaseModel):
 
 class VacancyDetailOut(VacancyOut):
     description_text: str
-    canonical_id: Optional[int] = None  
-    also_found_at: list[DuplicateOut] = []  
+    canonical_id: Optional[int] = None
+    also_found_at: list[DuplicateOut] = []
 
 
 class VacancyPage(BaseModel):
@@ -88,9 +89,9 @@ class ResumeOut(BaseModel):
     char_count: int
     language: Optional[str]
     experience_years: Optional[float] = None
-    preview: str  
+    preview: str
     skills: list[str]
-    unknown_skills: list[str] = []  
+    unknown_skills: list[str] = []
     created_at: datetime
 
 
@@ -106,7 +107,7 @@ class SkillOut(BaseModel):
     name: str
     category: Optional[str]
     weight: float
-    matched_alias: Optional[str] = None 
+    matched_alias: Optional[str] = None
 
 
 class NormalizeIn(BaseModel):
@@ -147,7 +148,7 @@ class Preferences(BaseModel):
     max_hours_per_week: Optional[int] = Field(None, ge=1, le=80)
     min_salary: Optional[int] = Field(None, ge=0, le=10_000_000)  # в месяц
     salary_currency: Optional[Literal["EUR", "USD", "GBP", "RUB"]] = None
-    must_have: list[Criterion] = [] 
+    must_have: list[Criterion] = []
 
     @field_validator("work_formats", "employment_types", "schedules", "must_have")
     @classmethod
@@ -176,17 +177,25 @@ class Preferences(BaseModel):
 
 
 class CriterionOut(BaseModel):
-    score: Optional[float]  
+    score: Optional[float]
     weight: float
     status: Literal["match", "partial", "mismatch", "unknown"]
     text: str
-    matched: Optional[list[str]] = None 
+    applicable: Optional[bool] = None
+    matched: Optional[list[str]] = None
     missing: Optional[list[str]] = None
+
+
+class SummaryOut(BaseModel):
+    matches: list[str]
+    gaps: list[str]
+    unknown: list[str]
 
 
 class MatchOut(BaseModel):
     vacancy: VacancyOut
-    score: Optional[int]  
+    summary: Optional[SummaryOut] = None
+    score: Optional[int]
     confidence: Optional[int] = None
     hidden: bool = False
     criteria: dict[str, CriterionOut]
@@ -198,3 +207,32 @@ class MatchPage(BaseModel):
     total: int
     limit: int
     offset: int
+
+
+class ShareCreate(BaseModel):
+    title: Optional[str] = Field(None, max_length=100)
+    allowed_fields: list[str] = Field(default_factory=list, validate_default=True)
+    min_score: Optional[int] = Field(None, ge=0, le=100)
+    expires_in_days: int = Field(7, ge=1, le=365)
+
+    @field_validator("allowed_fields")
+    @classmethod
+    def _whitelist(cls, fields: list[str]) -> list[str]:
+        return validate_fields(fields)
+
+
+class ShareOut(BaseModel):
+    id: int
+    title: Optional[str]
+    allowed_fields: list[str]
+    min_score: Optional[int]
+    expires_at: Optional[datetime]
+    revoked_at: Optional[datetime]
+    created_at: datetime
+    view_count: int
+    last_viewed_at: Optional[datetime]
+    active: bool
+
+
+class ShareCreated(ShareOut):
+    token: str

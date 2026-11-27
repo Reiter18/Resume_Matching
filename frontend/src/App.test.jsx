@@ -1,6 +1,6 @@
 import { screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { HEALTH, USER, mockApi, renderApp } from './test/utils.jsx'
+import { USER, mockApi, renderApp } from './test/utils.jsx'
 import { setToken } from './auth/token.js'
 
 beforeEach(() => localStorage.clear())
@@ -15,12 +15,14 @@ describe('роутинг и защита страниц', () => {
   })
 
   it('вошедший видит ленту, навигацию и свой email', async () => {
-    mockApi({ 'GET /me': { status: 200, body: USER }, 'GET /health': { status: 200, body: HEALTH } })
+    const fetchMock = mockApi({ 'GET /me': { status: 200, body: USER } })
     setToken('valid-token')
     renderApp('/')
     expect(await screen.findByRole('heading', { name: 'Лента вакансий' })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Профиль и резюме' })).toBeInTheDocument()
     expect(screen.getByText(USER.email)).toBeInTheDocument()
+    expect(screen.queryByTitle('Состояние бэкенда')).not.toBeInTheDocument()
+    expect(fetchMock.mock.calls.some(([url]) => url === '/api/health')).toBe(false)
   })
 
   it('публичная подборка открывается без входа и без шапки приложения', () => {

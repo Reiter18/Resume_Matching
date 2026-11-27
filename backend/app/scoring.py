@@ -90,11 +90,32 @@ def _experience(resume, v):
         return None, "опыт в вакансии не указан"
     if resume.experience_years is None:
         return None, "в резюме опыт не указан"
-    return min(1.0, resume.experience_years / need) if need else 1.0, f"нужно {need:g}, в резюме {resume.experience_years:g}"
+    return min(
+        1.0, resume.experience_years / need
+    ) if need else 1.0, f"нужно {need:g}, в резюме {resume.experience_years:g}"
 
 
 def _status(score):
     return "unknown" if score is None else "match" if score >= 1 else "mismatch" if score <= 0 else "partial"
+
+
+def summarize(criteria: dict) -> dict:
+    matches, gaps, unknown = [], [], []
+    for key, criterion in sorted(criteria.items(), key=lambda item: -item[1]["weight"]):
+        if not criterion["applicable"]:
+            continue
+        if criterion["score"] is None:
+            unknown.append(criterion["text"])
+        elif key == "skills":
+            if criterion["matched"]:
+                matches.append("навыки: " + ", ".join(criterion["matched"]))
+            if criterion["missing"]:
+                gaps.append("не хватает навыков: " + ", ".join(criterion["missing"]))
+        elif criterion["status"] == "match":
+            matches.append(criterion["text"])
+        else:
+            gaps.append(criterion["text"])
+    return {"matches": matches, "gaps": gaps, "unknown": unknown}
 
 
 def score_vacancy(resume, prefs, v, weights: dict, criteria_weights: dict = WEIGHTS) -> dict:
@@ -105,7 +126,9 @@ def score_vacancy(resume, prefs, v, weights: dict, criteria_weights: dict = WEIG
     }  # fmt: skip
     criteria = {}
     for key, (score, text, *extra) in checks.items():
-        criteria[key] = dict(score=score, weight=criteria_weights[key], status=_status(score), text=text, **(extra[0] if extra else {}))
+        criteria[key] = dict(
+            score=score, weight=criteria_weights[key], status=_status(score), text=text, **(extra[0] if extra else {})
+        )
     used = [c for c in criteria.values() if c["score"] is not None]
     known = sum(c["weight"] for c in used)
     applicable = {
@@ -114,8 +137,16 @@ def score_vacancy(resume, prefs, v, weights: dict, criteria_weights: dict = WEIG
         "schedule": bool(prefs.schedules), "hours": bool(prefs.min_hours_per_week or prefs.max_hours_per_week),
         "experience": resume.experience_years is not None,
     }  # fmt: skip
+    for key, criterion in criteria.items():
+        criterion["applicable"] = applicable[key]
     possible = sum(criteria_weights[k] for k, ok in applicable.items() if ok)
     hidden = any(criteria[k]["status"] in ("partial", "mismatch") for k in prefs.must_have if k in criteria)
     score = sum(c["score"] * c["weight"] for c in used) / possible if used and possible else None
-    confidence = known / possible if possible else 0.0  
-    return {"score": None if score is None else round(score, 4), "confidence": round(confidence, 4), "hidden": hidden, "criteria": criteria}
+    confidence = known / possible if possible else 0.0
+    return {
+        "score": None if score is None else round(score, 4),
+        "confidence": round(confidence, 4),
+        "hidden": hidden,
+        "criteria": criteria,
+        "summary": summarize(criteria),
+    }
